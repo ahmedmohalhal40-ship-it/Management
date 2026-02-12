@@ -3,126 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة الإدارة | عرض الكشوفات</title>
+    <title>لوحة الإدارة | تحميل الكشوفات</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --bg: #f4f7f6; }
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: var(--bg); padding: 20px; text-align: center; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
-        th { background: var(--primary); color: white; }
-        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 2px; }
-        .btn-show { background: #3498db; color: white; }
-        .btn-word { background: #27ae60; color: white; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --bg: #f4f7f6; --white: #fff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
+        #lockScreen { text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        #lockScreen input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; width: 100%; text-align: center; font-size: 18px; }
         
-        /* استايل النافذة المنبثقة */
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
-        .modal-content { background: white; width: 80%; max-width: 700px; margin: 50px auto; padding: 20px; border-radius: 10px; max-height: 80vh; overflow-y: auto; }
-        .close-btn { background: #e74c3c; color: white; padding: 5px 10px; border-radius: 5px; float: left; cursor: pointer; }
+        #adminContent { display: none; width: 100%; max-width: 1000px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
+        th { background: var(--primary); color: white; }
+        
+        .btn-download { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-download:hover { background: #219150; }
+        .btn-download:disabled { background: #ccc; cursor: not-allowed; }
+
+        .error-msg { background: #e74c3c; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
     </style>
 </head>
 <body>
 
-    <div class="container" id="adminBox">
-        <h2>لوحة إدارة الكشوفات 📋</h2>
-        <table id="activitiesTable">
+    <div id="lockScreen">
+        <h2>🔒 دخول الإدارة</h2>
+        <input type="password" id="passkeyInput" placeholder="Passkey">
+        <button onclick="checkPasskey()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer;">دخول</button>
+    </div>
+
+    <div id="adminContent">
+        <header>
+            <h2>لوحة إدارة الكشوفات 📋</h2>
+            <button onclick="location.reload()" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">خروج</button>
+        </header>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <table>
             <thead>
                 <tr>
-                    <th>النشاط</th>
+                    <th>اسم النشاط</th>
                     <th>التاريخ</th>
-                    <th>عرض / تحميل</th>
+                    <th>المسجلين</th>
+                    <th>الإجراء</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="adminTableBody"></tbody>
         </table>
     </div>
 
-    <div id="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">إغلاق X</span>
-            <h3 id="modalTitle"></h3>
-            <div id="modalBody"></div>
-            <button class="btn btn-word" onclick="exportCurrentToWord()">تحميل كملف Word</button>
-        </div>
-    </div>
-
     <script>
+        // إعدادات Supabase
         const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentData = { title: '', date: '', students: [] };
+        // وظيفة فحص الباسكي
+        function checkPasskey() {
+            if (document.getElementById('passkeyInput').value === "29112002") {
+                document.getElementById('lockScreen').style.display = "none";
+                document.getElementById('adminContent').style.display = "block";
+                loadActivities();
+            } else {
+                alert("الرمز غير صحيح!");
+            }
+        }
 
+        // إظهار رسائل الخطأ
+        function showError(msg) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.innerText = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        // تحميل الأنشطة من قاعدة البيانات
         async function loadActivities() {
-            const { data } = await _supabase.from('activities').select('*').order('created_at', {ascending: false});
-            const tbody = document.querySelector('#activitiesTable tbody');
-            tbody.innerHTML = '';
-            data.forEach(act => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${act.title}</td>
-                    <td>${act.activity_date}</td>
-                    <td>
-                        <button class="btn btn-show" onclick="viewStudents('${act.id}', '${act.title}', '${act.activity_date}')">عرض الجدول</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            try {
+                const { data, error } = await _supabase.from('activities').select('*, registrations(count)');
+                if (error) throw error;
+                
+                const tbody = document.getElementById('adminTableBody');
+                tbody.innerHTML = '';
+                data.forEach(act => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${act.title}</strong></td>
+                        <td>${act.activity_date}</td>
+                        <td>${act.registrations[0]?.count || 0}</td>
+                        <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showError("خطأ في تحميل البيانات من سوبابيس");
+            }
         }
 
-        async function viewStudents(id, title, date) {
-            const { data: regs } = await _supabase.from('registrations').select('profiles(*)').eq('activity_id', id);
-            
-            currentData = {
-                title: title,
-                date: date,
-                students: regs.map((r, i) => ({
+        // دالة إنشاء ملف الوورد
+        async function generateDoc(actId, title, date) {
+            const btn = document.getElementById(`btn-${actId}`);
+            btn.innerText = "جاري التحميل...";
+            btn.disabled = true;
+
+            try {
+                // 1. جلب بيانات الطلاب المسجلين
+                const { data: regs, error: regError } = await _supabase
+                    .from('registrations')
+                    .select('profiles(*)')
+                    .eq('activity_id', actId);
+
+                if (regError) throw new Error('فشل جلب بيانات الطلاب');
+
+                const studentsList = regs.map((r, i) => ({
                     index: i + 1,
-                    name: r.profiles.full_name,
-                    phone: r.profiles.phone,
-                    major: r.profiles.major,
-                    year: r.profiles.academic_year
-                }))
-            };
+                    full_name: r.profiles.full_name || 'غير محدد',
+                    phone: r.profiles.phone || 'غير محدد',
+                    major: r.profiles.major || 'غير محدد',
+                    year: r.profiles.academic_year || 'غير محدد'
+                }));
 
-            let tableHtml = `
-                <table id="exportTable" border="1" style="width:100%; border-collapse:collapse; margin-top:10px;">
-                    <tr style="background:#eee;"><th>م</th><th>الاسم</th><th>الموبايل</th><th>الشعبة</th><th>الفرقة</th></tr>
-                    ${currentData.students.map(s => `<tr><td>${s.index}</td><td>${s.name}</td><td>${s.phone}</td><td>${s.major}</td><td>${s.year}</td></tr>`).join('')}
-                </table>`;
-            
-            document.getElementById('modalTitle').innerText = "كشف: " + title;
-            document.getElementById('modalBody').innerHTML = tableHtml;
-            document.getElementById('modal').style.display = 'block';
+                // 2. تحميل ملف التمبلت من GitHub (بنفس المسار)
+                // إضافة الـ Timestamp عشان نتفادى الـ Failed to fetch الناتجة عن الكاش
+                const response = await fetch('./Template.docx?t=' + new Date().getTime());
+                
+                if (!response.ok) {
+                    throw new Error('لم يتم العثور على ملف Template.docx. تأكد من رفعه بجانب هذا الملف بنفس الاسم.');
+                }
+                
+                const content = await response.arrayBuffer();
+
+                // 3. معالجة الملف وتعبئة البيانات
+                const zip = new PizZip(content);
+                const doc = new window.docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true,
+                });
+
+                // حساب اليوم بالعربي
+                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const dayName = days[new Date(date).getDay()];
+
+                // تعبئة الداتا في الملف
+                doc.render({
+                    title: title,
+                    date: date,
+                    day: dayName,
+                    students: studentsList
+                });
+
+                // 4. استخراج الملف النهائي وتحميله
+                const out = doc.getZip().generate({
+                    type: "blob",
+                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                });
+
+                saveAs(out, `كشف نشاط - ${title}.docx`);
+                
+                btn.innerText = "✅ تم التحميل";
+                setTimeout(() => {
+                    btn.innerText = "تحميل الكشف";
+                    btn.disabled = false;
+                }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                showError('⚠️ خطأ: ' + err.message);
+                btn.innerText = "فشل التحميل";
+                btn.disabled = false;
+            }
         }
-
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-        function exportCurrentToWord() {
-            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40' lang='ar' dir='rtl'><head><meta charset='utf-8'><title>Export</title></head><body>";
-            const footer = "</body></html>";
-            
-            // تصميم محتوى الملف
-            const content = `
-                <div style="text-align:center; direction:rtl;">
-                    <h2>نشاط: ${currentData.title}</h2>
-                    <p>بتاريخ: ${currentData.date}</p>
-                    ${document.getElementById('modalBody').innerHTML}
-                </div>`;
-
-            const sourceHTML = header + content + footer;
-            const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-            const fileDownload = document.createElement("a");
-            document.body.appendChild(fileDownload);
-            fileDownload.href = source;
-            fileDownload.download = `كشف_${currentData.title}.doc`;
-            fileDownload.click();
-            document.body.removeChild(fileDownload);
-        }
-
-        loadActivities();
     </script>
 </body>
 </html>
