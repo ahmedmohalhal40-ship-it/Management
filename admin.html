@@ -14,15 +14,25 @@
         :root { --primary: #2c3e50; --secondary: #3498db; --bg: #f4f7f6; --white: #fff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
         #lockScreen { text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         #lockScreen input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; width: 100%; text-align: center; font-size: 18px; }
-        #adminContent { display: none; width: 100%; max-width: 900px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        #adminContent { display: none; width: 100%; max-width: 1000px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .nav-btns { margin-bottom: 20px; }
+        .nav-btns a { text-decoration: none; background: var(--secondary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
         th { background: var(--primary); color: white; }
-        .btn-download { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-download:disabled { background: #ccc; }
+        
+        .btn-download { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-download:hover { background: #219150; }
+        .btn-download:disabled { background: #ccc; cursor: not-allowed; }
+
+        .error-msg { background: #e74c3c; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
     </style>
 </head>
 <body>
@@ -38,6 +48,12 @@
             <h2>لوحة إدارة الكشوفات 📋</h2>
             <button onclick="location.reload()" style="background:none; border:none; color:red; cursor:pointer;">خروج</button>
         </header>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="nav-btns">
+            <a href="admin-add-activity.html">➕ إضافة نشاط جديد</a>
+        </div>
 
         <table>
             <thead>
@@ -57,12 +73,24 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // رابط جوجل دوكس بعد تحويله لرابط تصدير DOCX مباشر
+        const GOOGLE_DOC_URL = 'https://docs.google.com/document/d/19_xLNZBNkZqA3ji6wsj9nqMvNjpUIU8E/export?format=docx';
+
         function checkPasskey() {
             if (document.getElementById('passkeyInput').value === "29112002") {
                 document.getElementById('lockScreen').style.display = "none";
                 document.getElementById('adminContent').style.display = "block";
                 loadActivities();
-            } else { alert("الرمز غير صحيح!"); }
+            } else {
+                alert("الرمز غير صحيح!");
+            }
+        }
+
+        function showError(msg) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.innerText = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
         }
 
         async function loadActivities() {
@@ -81,15 +109,27 @@
             });
         }
 
+        // دالة جلب التمبلت من جوجل دوكس باستخدام Fetch
+        async function getGoogleDocTemplate(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('فشل تحميل التمبلت من جوجل دوكس. تأكد من إعدادات المشاركة.');
+            return await response.arrayBuffer();
+        }
+
         async function generateDoc(actId, title, date) {
             const btn = document.getElementById(`btn-${actId}`);
-            btn.innerText = "جاري المعالجة...";
+            btn.innerText = "جاري التحميل...";
             btn.disabled = true;
 
             try {
-                // 1. جلب بيانات الطلاب
-                const { data: regs } = await _supabase.from('registrations').select('profiles(*)').eq('activity_id', actId);
-                
+                // 1. جلب بيانات الطلاب من Supabase
+                const { data: regs, error: regError } = await _supabase
+                    .from('registrations')
+                    .select('profiles(*)')
+                    .eq('activity_id', actId);
+
+                if (regError) throw new Error('خطأ في جلب البيانات');
+
                 const studentsList = regs.map((r, i) => ({
                     index: i + 1,
                     full_name: r.profiles.full_name || 'غير محدد',
@@ -98,19 +138,19 @@
                     year: r.profiles.academic_year || 'غير محدد'
                 }));
 
-                // 2. تحميل ملف التمبلت اللي إنت رفعته بجوار الكود
-                const response = await fetch('./Template.docx');
-                if (!response.ok) throw new Error('ملف Template.docx غير موجود بجانب الكود');
-                const content = await response.arrayBuffer();
+                // 2. تحميل التمبلت من جوجل دوكس
+                const content = await getGoogleDocTemplate(GOOGLE_DOC_URL);
 
-                // 3. معالجة الملف وتعبئة البيانات
+                // 3. معالجة الملف بواسطة docxtemplater
                 const zip = new PizZip(content);
-                const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+                const doc = new window.docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true,
+                });
 
                 const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                 const dayName = days[new Date(date).getDay()];
 
-                // تعبئة المتغيرات زي ما هي موجودة في ملف الورد بتاعك
                 doc.render({
                     title: title,
                     date: date,
@@ -118,19 +158,23 @@
                     students: studentsList
                 });
 
-                // 4. استخراج الملف وحفظه
                 const out = doc.getZip().generate({
                     type: "blob",
                     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 });
 
-                saveAs(out, `كشف نشاط ${title}.docx`);
+                // 4. حفظ الملف
+                saveAs(out, `كشف ${title}.docx`);
+                
                 btn.innerText = "✅ تم التحميل";
-                setTimeout(() => { btn.innerText = "تحميل الكشف"; btn.disabled = false; }, 2000);
+                setTimeout(() => {
+                    btn.innerText = "تحميل الكشف";
+                    btn.disabled = false;
+                }, 2000);
 
             } catch (err) {
                 console.error(err);
-                alert("حدث خطأ: " + err.message);
+                showError('⚠️ حدث خطأ: ' + err.message);
                 btn.innerText = "تحميل الكشف";
                 btn.disabled = false;
             }
