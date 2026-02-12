@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة الإدارة | تحميل الكشوفات</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip-utils.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -81,36 +81,39 @@
         }
 
         async function loadActivities() {
-            const { data } = await _supabase.from('activities').select('*, registrations(count)');
-            const tbody = document.getElementById('adminTableBody');
-            tbody.innerHTML = '';
-            data.forEach(act => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${act.title}</strong></td>
-                    <td>${act.activity_date}</td>
-                    <td>${act.registrations[0]?.count || 0}</td>
-                    <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function loadFile(url, callback) {
-            PizZipUtils.getBinaryContent(url, callback);
+            try {
+                const { data } = await _supabase.from('activities').select('*, registrations(count)');
+                const tbody = document.getElementById('adminTableBody');
+                tbody.innerHTML = '';
+                data.forEach(act => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${act.title}</strong></td>
+                        <td>${act.activity_date}</td>
+                        <td>${act.registrations[0]?.count || 0}</td>
+                        <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Error loading activities:", err);
+            }
         }
 
         async function generateDoc(actId, title, date) {
             const btn = document.getElementById(`btn-${actId}`);
-            btn.innerText = "جاري التحميل...";
+            const originalText = btn.innerText;
+            btn.innerText = "جاري المعالجة...";
             btn.disabled = true;
 
             try {
                 // 1. جلب بيانات الطلاب
-                const { data: regs } = await _supabase
+                const { data: regs, error } = await _supabase
                     .from('registrations')
                     .select('profiles(*)')
                     .eq('activity_id', actId);
+
+                if (error) throw error;
 
                 const studentsList = regs.map((r, i) => ({
                     index: i + 1,
@@ -120,13 +123,14 @@
                     year: r.profiles.academic_year
                 }));
 
-                // 2. معالجة الملف
-                // بنضيف تيمبستامب عشان نتجنب الكاش بتاع المتصفح
-                loadFile(`Template.docx?t=${new Date().getTime()}`, function(error, content) {
+                // 2. تحميل ملف الوورد
+                // استخدمنا timestamp لمنع الكاش
+                PizZipUtils.getBinaryContent(`Template.docx?v=${Date.now()}`, function(error, content) {
                     if (error) {
-                        alert("خطأ: لم يتم العثور على ملف Template.docx في السيرفر!");
-                        btn.innerText = "تحميل الكشف";
+                        alert("عذراً: لا يمكن الوصول لملف Template.docx. تأكد من رفعه في نفس المجلد.");
+                        btn.innerText = originalText;
                         btn.disabled = false;
+                        console.error(error);
                         return;
                     }
 
@@ -140,6 +144,7 @@
                         const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                         const dayName = days[new Date(date).getDay()];
 
+                        // دمج البيانات
                         doc.render({
                             title: title,
                             date: date,
@@ -152,19 +157,22 @@
                             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         });
 
-                        saveAs(out, `كشف نشاط ${title}.docx`);
+                        // التحميل
+                        saveAs(out, `كشف_نشاط_${title.replace(/\s+/g, '_')}.docx`);
+
                     } catch (e) {
-                        console.error(e);
-                        alert("حدث خطأ أثناء معالجة البيانات داخل الوورد.");
+                        console.error("Docxtemplater Error:", e);
+                        alert("حدث خطأ أثناء ملء ملف الوورد، تأكد من صحة التاجات داخل الملف.");
                     } finally {
-                        btn.innerText = "تحميل الكشف";
+                        btn.innerText = originalText;
                         btn.disabled = false;
                     }
                 });
 
             } catch (err) {
-                console.error(err);
-                alert("حدث خطأ غير متوقع.");
+                console.error("General Error:", err);
+                alert("حدث خطأ في الاتصال بقاعدة البيانات.");
+                btn.innerText = originalText;
                 btn.disabled = false;
             }
         }
