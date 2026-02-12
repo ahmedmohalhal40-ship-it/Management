@@ -7,7 +7,6 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip-utils.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -242,13 +241,14 @@
             });
         }
 
+        // استخراج الوورد - الكود المعدل
         async function generateDoc(actId, title, date) {
             const btn = document.getElementById(`dl-${actId}`);
-            btn.innerText = "⏳ جاري التحميل..."; 
+            btn.innerText = "جاري التحميل...";
             btn.disabled = true;
 
             try {
-                // جلب بيانات الطلاب المسجلين
+                // جلب بيانات التسجيلات
                 const { data: regs, error } = await _supabase
                     .from('registrations')
                     .select('profiles(*)')
@@ -256,77 +256,64 @@
 
                 if (error) throw error;
 
-                // تحضير قائمة الطلاب بالترتيب الصحيح
-                const students = regs.map((r, i) => ({
+                // تحضير قائمة الطلاب بنفس الصيغة الموجودة في التمبلت
+                const studentsList = regs.map((r, i) => ({
                     index: i + 1,
-                    full_name: r.profiles?.full_name || 'غير محدد',
-                    phone: r.profiles?.phone || 'غير محدد',
-                    major: r.profiles?.major || 'غير محدد',
-                    year: r.profiles?.academic_year || 'غير محدد'
+                    full_name: r.profiles.full_name || '',
+                    phone: r.profiles.phone || '',
+                    major: r.profiles.major || '',
+                    year: r.profiles.academic_year || ''
                 }));
 
-                // حساب اسم اليوم بالعربي
+                // تحويل التاريخ ليوم بالعربي
                 const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                const dayName = days[new Date(date).getDay()];
+                const dateObj = new Date(date + 'T00:00:00');
+                const dayName = days[dateObj.getDay()];
 
-                // تحميل ملف التمبلت
-                PizZipUtils.getBinaryContent('Template.docx', function(err, content) {
-                    if (err) { 
-                        alert("خطأ: لم يتم العثور على ملف Template.docx\nتأكد من وجود الملف في نفس المجلد");
-                        btn.innerText = "📥 كشف"; 
-                        btn.disabled = false;
-                        return;
-                    }
-                    
-                    try {
-                        // إنشاء ملف Word من التمبلت
-                        const zip = new PizZip(content);
-                        const doc = new window.docxtemplater(zip, {
-                            paragraphLoop: true,
-                            linebreaks: true,
-                            nullGetter: function() { return ''; }
-                        });
+                // تحميل التمبلت
+                const response = await fetch('Template.docx');
+                if (!response.ok) {
+                    throw new Error('ملف Template.docx غير موجود! تأكد أن الملف في نفس مجلد الصفحة');
+                }
 
-                        // ملء البيانات في التمبلت
-                        doc.render({
-                            title: title,
-                            date: date,
-                            day: dayName,
-                            students: students
-                        });
-
-                        // توليد الملف وتحميله
-                        const out = doc.getZip().generate({
-                            type: "blob",
-                            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        });
-                        
-                        saveAs(out, `كشف_${title}_${date}.docx`);
-                        btn.innerText = "✅ تم التحميل";
-                        
-                        setTimeout(() => {
-                            btn.innerText = "📥 كشف";
-                            btn.disabled = false;
-                        }, 2000);
-
-                    } catch (error) {
-                        console.error('خطأ في معالجة التمبلت:', error);
-                        alert("خطأ في معالجة الملف. تأكد من صحة التمبلت");
-                        btn.innerText = "📥 كشف";
-                        btn.disabled = false;
-                    }
+                const arrayBuffer = await response.arrayBuffer();
+                const zip = new PizZip(arrayBuffer);
+                
+                // إنشاء المستند
+                const doc = new window.docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true
                 });
 
-            } catch (e) {
-                console.error('خطأ في جلب البيانات:', e);
-                alert("خطأ في جلب بيانات الطلاب");
+                // تعبئة البيانات
+                doc.render({
+                    title: title,
+                    date: date,
+                    day: dayName,
+                    students: studentsList
+                });
+
+                // توليد الملف وحفظه
+                const out = doc.getZip().generate({
+                    type: "blob",
+                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                });
+
+                saveAs(out, `كشف_${title}_${date}.docx`);
+                
+                btn.innerText = "📥 كشف";
+                btn.disabled = false;
+
+            } catch (error) {
+                console.error('خطأ:', error);
+                alert("خطأ في تحميل الكشف: " + error.message);
                 btn.innerText = "📥 كشف";
                 btn.disabled = false;
             }
         }
 
         async function deleteActivity(id) {
-            if (confirm("هل أنت متأكد من حذف هذا النشاط نهائياً؟")) {
+            if (confirm("حذف النشاط نهائياً؟")) {
                 await _supabase.from('activities').delete().eq('id', id);
                 loadActivities();
             }
