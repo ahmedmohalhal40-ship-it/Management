@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة الأنشطة | لوحة التحكم الشاملة</title>
     
-    <!-- تم إزالة PizZipUtils لأنه لم يعد مستخدماً -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -255,8 +254,6 @@
                 }
                 const content = await response.arrayBuffer();
 
-                // *** التصحيح هنا ***
-                // يجب استخدام new PizZip() وليس new pizzip()
                 const zip = new PizZip(content);
                 const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
                 
