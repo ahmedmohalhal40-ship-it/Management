@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة | تحميل الكشوفات</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip-utils.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root { --primary: #2c3e50; --secondary: #3498db; --bg: #f4f7f6; --white: #fff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
+        #lockScreen { text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        #lockScreen input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; width: 100%; text-align: center; font-size: 18px; }
+        
+        #adminContent { display: none; width: 100%; max-width: 1000px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .nav-btns { margin-bottom: 20px; }
+        .nav-btns a { text-decoration: none; background: var(--secondary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
+        th { background: var(--primary); color: white; }
+        
+        .btn-download { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-download:hover { background: #219150; }
+        .btn-download:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div id="lockScreen">
+        <h2>🔒 دخول الإدارة</h2>
+        <input type="password" id="passkeyInput" placeholder="Passkey">
+        <button onclick="checkPasskey()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer;">دخول</button>
+    </div>
+
+    <div id="adminContent">
+        <header>
+            <h2>لوحة إدارة الكشوفات 📋</h2>
+            <button onclick="location.reload()" style="background:none; border:none; color:red; cursor:pointer;">خروج</button>
+        </header>
+
+        <div class="nav-btns">
+            <a href="admin-add-activity.html">➕ إضافة نشاط جديد</a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم النشاط</th>
+                    <th>التاريخ</th>
+                    <th>المسجلين</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function checkPasskey() {
+            if (document.getElementById('passkeyInput').value === "29112002") {
+                document.getElementById('lockScreen').style.display = "none";
+                document.getElementById('adminContent').style.display = "block";
+                loadActivities();
+            } else {
+                alert("الرمز غير صحيح!");
+            }
+        }
+
+        async function loadActivities() {
+            const { data } = await _supabase.from('activities').select('*, registrations(count)');
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = '';
+            data.forEach(act => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${act.title}</strong></td>
+                    <td>${act.activity_date}</td>
+                    <td>${act.registrations[0]?.count || 0}</td>
+                    <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function loadFile(url, callback) {
+            PizZipUtils.getBinaryContent(url, callback);
+        }
+
+        async function generateDoc(actId, title, date) {
+            const btn = document.getElementById(`btn-${actId}`);
+            btn.innerText = "جاري التحميل...";
+            btn.disabled = true;
+
+            try {
+                // 1. جلب بيانات الطلاب
+                const { data: regs } = await _supabase
+                    .from('registrations')
+                    .select('profiles(*)')
+                    .eq('activity_id', actId);
+
+                const studentsList = regs.map((r, i) => ({
+                    index: i + 1,
+                    full_name: r.profiles.full_name,
+                    phone: r.profiles.phone,
+                    major: r.profiles.major,
+                    year: r.profiles.academic_year
+                }));
+
+                // 2. معالجة الملف
+                // بنضيف تيمبستامب عشان نتجنب الكاش بتاع المتصفح
+                loadFile(`Template.docx?t=${new Date().getTime()}`, function(error, content) {
+                    if (error) {
+                        alert("خطأ: لم يتم العثور على ملف Template.docx في السيرفر!");
+                        btn.innerText = "تحميل الكشف";
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    try {
+                        const zip = new PizZip(content);
+                        const doc = new window.docxtemplater(zip, {
+                            paragraphLoop: true,
+                            linebreaks: true,
+                        });
+
+                        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                        const dayName = days[new Date(date).getDay()];
+
+                        doc.render({
+                            title: title,
+                            date: date,
+                            day: dayName,
+                            students: studentsList
+                        });
+
+                        const out = doc.getZip().generate({
+                            type: "blob",
+                            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        });
+
+                        saveAs(out, `كشف نشاط ${title}.docx`);
+                    } catch (e) {
+                        console.error(e);
+                        alert("حدث خطأ أثناء معالجة البيانات داخل الوورد.");
+                    } finally {
+                        btn.innerText = "تحميل الكشف";
+                        btn.disabled = false;
+                    }
+                });
+
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ غير متوقع.");
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

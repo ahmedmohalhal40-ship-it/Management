@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | منصة الأنشطة الطلابية</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* --- CSS التنسيق الموحد --- */
+        :root {
+            --primary-color: #2c3e50;    /* كحلي غامق */
+            --secondary-color: #3498db;  /* أزرق فاتح */
+            --accent-color: #e74c3c;     /* أحمر للتحذيرات */
+            --bg-color: #f4f7f6;         /* خلفية هادية */
+            --text-color: #333;
+            --white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-color);
+        }
+
+        .login-card {
+            background: var(--white);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .login-card h2 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-card p {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .input-group input:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .links-container {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .links-container a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .links-container a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card" id="mainCard">
+        <h2>تسجيل الدخول</h2>
+        <p>مرحباً بك في بوابة الأنشطة الطلابية</p>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <label>اسم المستخدم (Username)</label>
+                <input type="text" id="username" placeholder="اكتب اسم المستخدم" required>
+            </div>
+
+            <div class="input-group">
+                <label>كلمة المرور</label>
+                <input type="password" id="password" placeholder="********" required>
+            </div>
+
+            <button type="submit" class="login-btn" id="submitBtn">دخول</button>
+        </form>
+
+        <div class="links-container">
+            <a href="register.html">إنشاء حساب جديد</a>
+            <a href="register.html?type=reset">هل نسيت كلمة السر؟</a>
+        </div>
+    </div>
+
+    <script>
+        // --- JS الربط مع Supabase ---
+        
+        const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const loginForm = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userVal = document.getElementById('username').value.trim();
+            const passVal = document.getElementById('password').value.trim();
+
+            // شكل الزرار وهو بيحمل
+            submitBtn.innerText = "جاري التحقق...";
+            submitBtn.classList.add('loading');
+
+            try {
+                // البحث في جدول profiles عن اليوزر والباسورد
+                const { data, error } = await _supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('username', userVal)
+                    .eq('password', passVal)
+                    .single();
+
+                if (error || !data) {
+                    alert("خطأ: اسم المستخدم أو كلمة المرور غير صحيحة.");
+                } else {
+                    // حفظ بيانات المستخدم في الـ SessionStorage عشان الصفحات التانية تعرفه
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('studentData', JSON.stringify(data));
+                    
+                    alert("تم تسجيل الدخول بنجاح! جاري تحويلك...");
+                    window.location.href = 'activities.html';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ تقني، حاول مرة أخرى.");
+            } finally {
+                submitBtn.innerText = "دخول";
+                submitBtn.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html>

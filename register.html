@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب جديد | منصة الأنشطة</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* --- CSS التنسيق الموحد --- */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --bg-color: #f4f7f6;
+            --white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .reg-card {
+            background: var(--white);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .reg-card h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .input-group {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+
+        .full-width { grid-column: span 2; }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--secondary-color);
+        }
+
+        .btn-container {
+            margin-top: 20px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .register-btn { background-color: var(--secondary-color); color: white; }
+        .whatsapp-btn { background-color: #25d366; color: white; display: none; }
+
+        .register-btn:hover { background-color: #2980b9; }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            color: #7f8c8d;
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="reg-card">
+        <h2 id="formTitle">إنشاء حساب طالب</h2>
+        
+        <form id="registrationForm">
+            <div class="input-row">
+                <div class="input-group">
+                    <label>اسم المستخدم (Username)</label>
+                    <input type="text" id="username" placeholder="مثلاً: ahmed99" required>
+                </div>
+                <div class="input-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="password" placeholder="********" required>
+                </div>
+                
+                <div class="input-group full-width">
+                    <label>الاسم الثلاثي</label>
+                    <input type="text" id="full_name" placeholder="اكتب اسمك بالكامل" required>
+                </div>
+
+                <div class="input-group full-width">
+                    <label>رقم الهاتف (واتساب)</label>
+                    <input type="tel" id="phone" placeholder="011xxxxxxx" required>
+                </div>
+
+                <div class="input-group">
+                    <label>الشعبة</label>
+                    <select id="major" required>
+                        <option value="" disabled selected>اختر الشعبة</option>
+                        <option value="تجارة">تجارة</option>
+                        <option value="سياحة">سياحة</option>
+                        <option value="لغات">لغات</option>
+                        <option value="نظم المعلومات">نظم المعلومات</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>الفرقة</label>
+                    <select id="academic_year" required>
+                        <option value="" disabled selected>اختر الفرقة</option>
+                        <option value="الأولى">الأولى</option>
+                        <option value="الثانية">الثانية</option>
+                        <option value="الثالثة">الثالثة</option>
+                        <option value="الرابعة">الرابعة</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button type="submit" id="mainBtn" class="register-btn">تسجيل البيانات</button>
+                <button type="button" id="waBtn" class="whatsapp-btn" onclick="sendResetWhatsApp()">إرسال طلب استعادة بالواتساب</button>
+            </div>
+        </form>
+
+        <a href="index.html" class="back-link">العودة لتسجيل الدخول</a>
+    </div>
+
+    <script>
+        // إعدادات Supabase
+        const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // معرفة هل الطالب جاي "يسجل" ولا "يستعيد كلمة سر"
+        const urlParams = new URLSearchParams(window.location.search);
+        const isReset = urlParams.get('type') === 'reset';
+
+        if (isReset) {
+            document.getElementById('formTitle').innerText = "استعادة كلمة المرور";
+            document.getElementById('mainBtn').style.display = "none";
+            document.getElementById('waBtn').style.display = "block";
+            // في حالة الاستعادة مش محتاجين نلزمه بـ يوزر وباسورد
+            document.getElementById('username').required = false;
+            document.getElementById('password').required = false;
+        }
+
+        // 1. وظيفة التسجيل في Supabase
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (isReset) return; // لو حالة ريسيت ميعملش سجل في الداتا
+
+            const userData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                full_name: document.getElementById('full_name').value,
+                phone: document.getElementById('phone').value,
+                major: document.getElementById('major').value,
+                academic_year: document.getElementById('academic_year').value
+            };
+
+            const { error } = await _supabase.from('profiles').insert([userData]);
+
+            if (error) {
+                alert("خطأ في التسجيل: " + error.message);
+            } else {
+                alert("تم إنشاء حسابك بنجاح! يمكنك الآن تسجيل الدخول.");
+                window.location.href = "index.html";
+            }
+        });
+
+        // 2. وظيفة الإرسال للواتساب (نسيت كلمة السر)
+        function sendResetWhatsApp() {
+            const name = document.getElementById('full_name').value;
+            const phone = document.getElementById('phone').value;
+            const major = document.getElementById('major').value;
+            const year = document.getElementById('academic_year').value;
+
+            if (!name || !phone || !major || !year) {
+                alert("برجاء ملء البيانات (الاسم، الهاتف، الشعبة، الفرقة) لإرسال الطلب");
+                return;
+            }
+
+            const msg = `طلب استعادة كلمة السر:
+الاسم: ${name}
+رقم الهاتف: ${phone}
+الشعبة: ${major}
+الفرقة: ${year}`;
+
+            const encodedMsg = encodeURIComponent(msg);
+            window.open(`https://wa.me/201119859192?text=${encodedMsg}`, '_blank');
+        }
+    </script>
+</body>
+</html>

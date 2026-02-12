@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الملف الشخصي | منصة الطلاب</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --bg: #f4f7f6;
+            --white: #fff;
+            --gray: #7f8c8d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+
+        body { background-color: var(--bg); color: var(--primary); }
+
+        /* الهيدر */
+        header {
+            background: var(--white);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .logo { width: 35px; height: 35px; border-radius: 50%; }
+
+        .back-btn {
+            text-decoration: none;
+            color: var(--secondary);
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* كارت البروفايل */
+        .profile-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .profile-card {
+            background: var(--white);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 40px 20px;
+            color: white;
+        }
+
+        .profile-header img {
+            width: 100px;
+            height: 100px;
+            background: white;
+            padding: 5px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+
+        .profile-body {
+            padding: 30px;
+            text-align: right;
+        }
+
+        .info-item {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .footer-btns {
+            padding: 0 30px 30px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-edit { background: var(--secondary); color: white; margin-bottom: 10px; }
+        .btn-logout { background: #fdf0ef; color: #e74c3c; }
+
+        .btn-edit:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-right">
+            <img src="لوجو.png" alt="Logo" class="logo">
+            <span>الملف الشخصي</span>
+        </div>
+        <a href="activities.html" class="back-btn">← العودة للأنشطة</a>
+    </header>
+
+    <div class="profile-container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <img src="لوجو.png" alt="Profile Picture">
+                <h2 id="disp-name">جاري التحميل...</h2>
+                <p id="disp-username">@username</p>
+            </div>
+
+            <div class="profile-body">
+                <div class="info-item">
+                    <span class="info-label">رقم الهاتف (واتساب)</span>
+                    <span class="info-value" id="disp-phone">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">الشعبة</span>
+                    <span class="info-value" id="disp-major">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">الفرقة</span>
+                    <span class="info-value" id="disp-year">-</span>
+                </div>
+            </div>
+
+            <div class="footer-btns">
+                <button class="btn btn-edit" onclick="window.print()">طباعة بياناتي</button>
+                <a href="#" class="btn btn-logout" onclick="logout()">تسجيل الخروج</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // التأكد من تسجيل الدخول
+        const student = JSON.parse(sessionStorage.getItem('studentData'));
+
+        if (!student) {
+            window.location.href = 'index.html';
+        } else {
+            // عرض البيانات في الصفحة
+            document.getElementById('disp-name').innerText = student.full_name;
+            document.getElementById('disp-username').innerText = `@${student.username}`;
+            document.getElementById('disp-phone').innerText = student.phone;
+            document.getElementById('disp-major').innerText = student.major;
+            document.getElementById('disp-year').innerText = student.academic_year;
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

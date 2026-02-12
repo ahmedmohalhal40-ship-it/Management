@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الأنشطة | لوحة التحكم</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --bg: #f4f7f6;
+            --white: #fff;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: var(--primary); padding: 20px; }
+
+        .admin-container { max-width: 900px; margin: 0 auto; }
+
+        /* الهيدر */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--white);
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .back-link { text-decoration: none; color: var(--secondary); font-weight: bold; }
+
+        /* فورم الإضافة */
+        .card {
+            background: var(--white);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        .card h3 { margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .input-group { margin-bottom: 15px; text-align: right; }
+        .full-width { grid-column: span 2; }
+
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            outline: none;
+        }
+        input:focus { border-color: var(--secondary); }
+
+        .btn-add {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        /* جدول الأنشطة */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        th, td { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
+        th { background-color: var(--primary); color: white; }
+
+        .btn-delete {
+            background: #fdf0ef;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-delete:hover { background: var(--danger); color: white; }
+
+        .stats-badge {
+            background: #e8f4fd;
+            color: var(--secondary);
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <header>
+            <h2>لوحة إدارة الأنشطة</h2>
+            <a href="admin.html" class="back-link">الرجوع للرئيسية ←</a>
+        </header>
+
+        <div class="card">
+            <h3>إضافة نشاط جديد</h3>
+            <form id="addActivityForm">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label>اسم النشاط</label>
+                        <input type="text" id="title" placeholder="" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label>الوصف</label>
+                        <textarea id="description" rows="2" placeholder=""></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>التاريخ</label>
+                        <input type="date" id="activity_date" required>
+                    </div>
+                    <div class="input-group">
+                        <label>الساعة</label>
+                        <input type="time" id="activity_time">
+                    </div>
+                </div>
+                <button type="submit" class="btn-add">نشر النشاط الآن</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>الأنشطة الحالية والإحصائيات</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>النشاط</th>
+                        <th>التاريخ</th>
+                        <th>المسجلين</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="activitiesTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // وظيفة إضافة نشاط
+        document.getElementById('addActivityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = "جاري النشر...";
+
+            const newActivity = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                activity_date: document.getElementById('activity_date').value,
+                // يمكنك إضافة عمود الوقت في الداتابيز لو حبيت، هنا هنكتفي بالداتا الأساسية
+            };
+
+            const { error } = await _supabase.from('activities').insert([newActivity]);
+
+            if (error) {
+                alert("خطأ أثناء الإضافة: " + error.message);
+            } else {
+                alert("تم إضافة النشاط بنجاح!");
+                document.getElementById('addActivityForm').reset();
+                loadActivities();
+            }
+            btn.innerText = "نشر النشاط الآن";
+        });
+
+        // وظيفة تحميل الأنشطة وحساب المسجلين
+        async function loadActivities() {
+            const tbody = document.getElementById('activitiesTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">جاري التحميل...</td></tr>';
+
+            // جلب الأنشطة
+            const { data: activities, error } = await _supabase
+                .from('activities')
+                .select(`
+                    id, 
+                    title, 
+                    activity_date,
+                    registrations (count)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            tbody.innerHTML = '';
+            activities.forEach(act => {
+                // عدد المسجلين بيجي من العلاقة registrations
+                const regCount = act.registrations[0]?.count || 0;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${act.title}</strong></td>
+                    <td>${act.activity_date || '---'}</td>
+                    <td><span class="stats-badge">${regCount} طالب</span></td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteActivity('${act.id}')">حذف النشاط</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // وظيفة الحذف
+        async function deleteActivity(id) {
+            if (confirm("هل أنت متأكد من حذف هذا النشاط؟ سيتم حذف جميع المسجلين فيه أيضاً!")) {
+                const { error } = await _supabase.from('activities').delete().eq('id', id);
+                if (error) {
+                    alert("حدث خطأ أثناء الحذف");
+                } else {
+                    loadActivities();
+                }
+            }
+        }
+
+        loadActivities();
+    </script>
+</body>
+</html>
