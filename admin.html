@@ -103,17 +103,6 @@
             background: #e8f4fd; color: var(--secondary); padding: 4px 10px;
             border-radius: 20px; font-size: 13px; font-weight: bold;
         }
-        /* تنبيه خاص في حال فشل التحميل */
-        .error-hint {
-            background: #fff3f3;
-            color: #d32f2f;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            border: 1px solid #ffcdd2;
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -130,10 +119,6 @@
             <h2>لوحة الإدارة الشاملة 📋</h2>
             <button onclick="location.reload()" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">تسجيل الخروج ←</button>
         </header>
-
-        <div id="fileErrorHint" class="error-hint">
-            ⚠️ يبدو أن هناك مشكلة في تحميل <b>Template.docx</b> تلقائياً. تأكد من وجود الملف بجانب هذا الكود، أو تأكد من تشغيل الكود عبر "سيرفر محلي".
-        </div>
 
         <div class="card">
             <h3>➕ إضافة نشاط جديد</h3>
@@ -180,6 +165,9 @@
         const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY );
+
+        // تم تنظيف كود Base64 بالكامل لضمان عدم وجود أخطاء في التشفير
+        const TEMPLATE_BASE64 = "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";
 
         function checkPasskey() {
             const input = document.getElementById('passkeyInput').value;
@@ -242,13 +230,22 @@
             });
         }
 
+        // دالة تحويل Base64 إلى ArrayBuffer بشكل آمن
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
         async function generateDoc(actId, title, date) {
             const btn = document.getElementById(`dl-${actId}`);
             btn.innerText = "...";
             btn.disabled = true;
 
             try {
-                // 1. جلب بيانات المسجلين
                 const { data: regs, error: regsError } = await _supabase
                     .from('registrations')
                     .select('profiles(*)')
@@ -264,18 +261,9 @@
                     year: r.profiles.academic_year
                 }));
 
-                // 2. محاولة جلب ملف القالب
-                let content;
-                try {
-                    const response = await fetch('Template.docx', { cache: 'no-store' });
-                    if (!response.ok) throw new Error();
-                    content = await response.arrayBuffer();
-                } catch (fetchErr) {
-                    document.getElementById('fileErrorHint').style.display = 'block';
-                    throw new Error("لم نتمكن من العثور على Template.docx تلقائياً. تأكد من وجود الملف بجانب الكود أو رفعه على استضافة.");
-                }
+                // استخدام القالب المدمج
+                const content = base64ToArrayBuffer(TEMPLATE_BASE64);
 
-                // 3. توليد الملف
                 const zip = new PizZip(content);
                 const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
                 
