@@ -65,117 +65,118 @@
         </table>
     </div>
 
-    <script>
-        const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
+const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        function checkPasskey() {
-            if (document.getElementById('passkeyInput').value === "29112002") {
-                document.getElementById('lockScreen').style.display = "none";
-                document.getElementById('adminContent').style.display = "block";
-                loadActivities();
-            } else {
-                alert("الرمز غير صحيح!");
-            }
+function checkPasskey() {
+    if (document.getElementById('passkeyInput').value === "29112002") {
+        document.getElementById('lockScreen').style.display = "none";
+        document.getElementById('adminContent').style.display = "block";
+        loadActivities();
+    } else {
+        alert("الرمز غير صحيح!");
+    }
+}
+
+async function loadActivities() {
+    const { data, error } = await _supabase
+        .from('activities')
+        .select('*, registrations(count)');
+
+    if (error) {
+        console.error(error);
+        alert("خطأ في تحميل الأنشطة");
+        return;
+    }
+
+    const tbody = document.getElementById('adminTableBody');
+    tbody.innerHTML = '';
+
+    data.forEach(act => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${act.title}</strong></td>
+            <td>${act.activity_date}</td>
+            <td>${act.registrations[0]?.count || 0}</td>
+            <td>
+                <button class="btn-download" 
+                id="btn-${act.id}" 
+                onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">
+                تحميل الكشف
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function generateDoc(actId, title, date) {
+
+    const btn = document.getElementById(`btn-${actId}`);
+    btn.innerText = "جاري التحميل...";
+    btn.disabled = true;
+
+    try {
+
+        // 1️⃣ جلب بيانات الطلاب
+        const { data: regs, error } = await _supabase
+            .from('registrations')
+            .select('profiles(full_name,phone,major,academic_year)')
+            .eq('activity_id', actId);
+
+        if (error) throw error;
+
+        const studentsList = (regs || []).map((r, i) => ({
+            index: i + 1,
+            full_name: r.profiles?.full_name || '',
+            phone: r.profiles?.phone || '',
+            major: r.profiles?.major || '',
+            year: r.profiles?.academic_year || ''
+        }));
+
+        // 2️⃣ تحميل التيمبليت باستخدام fetch
+        const response = await fetch('Template.docx?' + new Date().getTime());
+
+        if (!response.ok) {
+            throw new Error("Template file not found");
         }
 
-        async function loadActivities() {
-            try {
-                const { data } = await _supabase.from('activities').select('*, registrations(count)');
-                const tbody = document.getElementById('adminTableBody');
-                tbody.innerHTML = '';
-                data.forEach(act => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${act.title}</strong></td>
-                        <td>${act.activity_date}</td>
-                        <td>${act.registrations[0]?.count || 0}</td>
-                        <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                console.error("Error loading activities:", err);
-            }
-        }
+        const content = await response.arrayBuffer();
+        const zip = new PizZip(content);
 
-        async function generateDoc(actId, title, date) {
-            const btn = document.getElementById(`btn-${actId}`);
-            const originalText = btn.innerText;
-            btn.innerText = "جاري المعالجة...";
-            btn.disabled = true;
+        const doc = new window.docxtemplater(zip, {
+            paragraphLoop: true,
+            linebreaks: true,
+        });
 
-            try {
-                // 1. جلب بيانات الطلاب
-                const { data: regs, error } = await _supabase
-                    .from('registrations')
-                    .select('profiles(*)')
-                    .eq('activity_id', actId);
+        const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+        const dayName = days[new Date(date).getDay()];
 
-                if (error) throw error;
+        doc.render({
+            title: title,
+            date: date,
+            day: dayName,
+            students: studentsList
+        });
 
-                const studentsList = regs.map((r, i) => ({
-                    index: i + 1,
-                    full_name: r.profiles.full_name,
-                    phone: r.profiles.phone,
-                    major: r.profiles.major,
-                    year: r.profiles.academic_year
-                }));
+        const out = doc.getZip().generate({
+            type: "blob",
+            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
 
-                // 2. تحميل ملف الوورد
-                // استخدمنا timestamp لمنع الكاش
-                PizZipUtils.getBinaryContent(`Template.docx?v=${Date.now()}`, function(error, content) {
-                    if (error) {
-                        alert("عذراً: لا يمكن الوصول لملف Template.docx. تأكد من رفعه في نفس المجلد.");
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                        console.error(error);
-                        return;
-                    }
+        saveAs(out, `كشف نشاط ${title}.docx`);
 
-                    try {
-                        const zip = new PizZip(content);
-                        const doc = new window.docxtemplater(zip, {
-                            paragraphLoop: true,
-                            linebreaks: true,
-                        });
-
-                        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                        const dayName = days[new Date(date).getDay()];
-
-                        // دمج البيانات
-                        doc.render({
-                            title: title,
-                            date: date,
-                            day: dayName,
-                            students: studentsList
-                        });
-
-                        const out = doc.getZip().generate({
-                            type: "blob",
-                            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        });
-
-                        // التحميل
-                        saveAs(out, `كشف_نشاط_${title.replace(/\s+/g, '_')}.docx`);
-
-                    } catch (e) {
-                        console.error("Docxtemplater Error:", e);
-                        alert("حدث خطأ أثناء ملء ملف الوورد، تأكد من صحة التاجات داخل الملف.");
-                    } finally {
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                    }
-                });
-
-            } catch (err) {
-                console.error("General Error:", err);
-                alert("حدث خطأ في الاتصال بقاعدة البيانات.");
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
-        }
+    } catch (e) {
+        console.error(e);
+        alert("حدث خطأ أثناء إنشاء الملف. افتح Console وشوف الخطأ.");
+    } finally {
+        btn.innerText = "تحميل الكشف";
+        btn.disabled = false;
+    }
+}
     </script>
 </body>
 </html>
+
