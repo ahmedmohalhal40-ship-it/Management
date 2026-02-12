@@ -73,6 +73,9 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // رابط جوجل دوكس بعد تحويله لرابط تصدير DOCX مباشر
+        const GOOGLE_DOC_URL = 'https://docs.google.com/document/d/19_xLNZBNkZqA3ji6wsj9nqMvNjpUIU8E/export?format=docx';
+
         function checkPasskey() {
             if (document.getElementById('passkeyInput').value === "29112002") {
                 document.getElementById('lockScreen').style.display = "none";
@@ -106,25 +109,11 @@
             });
         }
 
-        // دالة محسنة لتحميل الملف باستخدام XMLHttpRequest
-        function loadFile(url, callback) {
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', url, true);
-            xhr.responseType = 'arraybuffer';
-            
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    callback(null, xhr.response);
-                } else {
-                    callback(new Error(`خطأ في تحميل الملف: ${xhr.status} - ${xhr.statusText}`));
-                }
-            };
-            
-            xhr.onerror = function() {
-                callback(new Error('فشل تحميل الملف - تأكد من وجود Template.docx في نفس المجلد'));
-            };
-            
-            xhr.send();
+        // دالة جلب التمبلت من جوجل دوكس باستخدام Fetch
+        async function getGoogleDocTemplate(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('فشل تحميل التمبلت من جوجل دوكس. تأكد من إعدادات المشاركة.');
+            return await response.arrayBuffer();
         }
 
         async function generateDoc(actId, title, date) {
@@ -133,15 +122,13 @@
             btn.disabled = true;
 
             try {
-                // جلب بيانات الطلاب
+                // 1. جلب بيانات الطلاب من Supabase
                 const { data: regs, error: regError } = await _supabase
                     .from('registrations')
                     .select('profiles(*)')
                     .eq('activity_id', actId);
 
-                if (regError) {
-                    throw new Error('خطأ في جلب البيانات من قاعدة البيانات');
-                }
+                if (regError) throw new Error('خطأ في جلب البيانات');
 
                 const studentsList = regs.map((r, i) => ({
                     index: i + 1,
@@ -151,62 +138,43 @@
                     year: r.profiles.academic_year || 'غير محدد'
                 }));
 
-                // تحميل ملف التمبليت
-                loadFile(`./Template.docx?t=${new Date().getTime()}`, function(error, content) {
-                    if (error) {
-                        console.error('Error loading template:', error);
-                        showError('⚠️ خطأ: تأكد من وجود ملف Template.docx في نفس مجلد الصفحة');
-                        btn.innerText = "تحميل الكشف";
-                        btn.disabled = false;
-                        return;
-                    }
+                // 2. تحميل التمبلت من جوجل دوكس
+                const content = await getGoogleDocTemplate(GOOGLE_DOC_URL);
 
-                    try {
-                        // معالجة الملف
-                        const zip = new PizZip(content);
-                        const doc = new window.docxtemplater(zip, {
-                            paragraphLoop: true,
-                            linebreaks: true,
-                        });
-
-                        // حساب اسم اليوم بالعربي
-                        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                        const dayName = days[new Date(date).getDay()];
-
-                        // ملء البيانات
-                        doc.render({
-                            title: title,
-                            date: date,
-                            day: dayName,
-                            students: studentsList
-                        });
-
-                        // توليد الملف النهائي
-                        const out = doc.getZip().generate({
-                            type: "blob",
-                            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        });
-
-                        // تحميل الملف
-                        saveAs(out, `كشف نشاط ${title}.docx`);
-                        
-                        btn.innerText = "✅ تم التحميل";
-                        setTimeout(() => {
-                            btn.innerText = "تحميل الكشف";
-                            btn.disabled = false;
-                        }, 2000);
-
-                    } catch (e) {
-                        console.error('Error processing document:', e);
-                        showError('⚠️ خطأ في معالجة البيانات - تأكد من صحة ملف Template.docx');
-                        btn.innerText = "تحميل الكشف";
-                        btn.disabled = false;
-                    }
+                // 3. معالجة الملف بواسطة docxtemplater
+                const zip = new PizZip(content);
+                const doc = new window.docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true,
                 });
 
+                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const dayName = days[new Date(date).getDay()];
+
+                doc.render({
+                    title: title,
+                    date: date,
+                    day: dayName,
+                    students: studentsList
+                });
+
+                const out = doc.getZip().generate({
+                    type: "blob",
+                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                });
+
+                // 4. حفظ الملف
+                saveAs(out, `كشف ${title}.docx`);
+                
+                btn.innerText = "✅ تم التحميل";
+                setTimeout(() => {
+                    btn.innerText = "تحميل الكشف";
+                    btn.disabled = false;
+                }, 2000);
+
             } catch (err) {
-                console.error('General error:', err);
-                showError('⚠️ حدث خطأ غير متوقع - ' + err.message);
+                console.error(err);
+                showError('⚠️ حدث خطأ: ' + err.message);
                 btn.innerText = "تحميل الكشف";
                 btn.disabled = false;
             }
