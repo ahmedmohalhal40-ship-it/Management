@@ -3,163 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة الأنشطة | لوحة التحكم</title>
+    <title>لوحة الإدارة | تحميل الكشوفات</title>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --bg: #f4f7f6;
-            --white: #fff;
-            --danger: #e74c3c;
-            --success: #2ecc71;
-        }
-
+        :root { --primary: #2c3e50; --secondary: #3498db; --bg: #f4f7f6; --white: #fff; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: var(--primary); padding: 20px; }
+        body { background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
 
-        .admin-container { max-width: 900px; margin: 0 auto; }
+        #lockScreen { text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        #lockScreen input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; width: 100%; text-align: center; font-size: 18px; }
+        
+        #adminContent { display: none; width: 100%; max-width: 1000px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .nav-btns { margin-bottom: 20px; }
+        .nav-btns a { text-decoration: none; background: var(--secondary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
 
-        /* الهيدر */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background: var(--white);
-            padding: 15px 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
+        th { background: var(--primary); color: white; }
+        
+        .btn-download { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-download:hover { background: #219150; }
+        .btn-download:disabled { background: #ccc; cursor: not-allowed; }
 
-        .back-link { text-decoration: none; color: var(--secondary); font-weight: bold; }
-
-        /* فورم الإضافة */
-        .card {
-            background: var(--white);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-        }
-
-        .card h3 { margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .input-group { margin-bottom: 15px; text-align: right; }
-        .full-width { grid-column: span 2; }
-
-        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #eee;
-            border-radius: 8px;
-            outline: none;
-        }
-        input:focus { border-color: var(--secondary); }
-
-        .btn-add {
-            background: var(--secondary);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            font-size: 16px;
-        }
-
-        /* جدول الأنشطة */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--white);
-            border-radius: 15px;
-            overflow: hidden;
-        }
-
-        th, td { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
-        th { background-color: var(--primary); color: white; }
-
-        .btn-delete {
-            background: #fdf0ef;
-            color: var(--danger);
-            border: 1px solid var(--danger);
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .btn-delete:hover { background: var(--danger); color: white; }
-
-        .stats-badge {
-            background: #e8f4fd;
-            color: var(--secondary);
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
+        .error-msg { background: #e74c3c; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
     </style>
 </head>
 <body>
 
-    <div class="admin-container">
+    <div id="lockScreen">
+        <h2>🔒 دخول الإدارة</h2>
+        <input type="password" id="passkeyInput" placeholder="Passkey">
+        <button onclick="checkPasskey()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer;">دخول</button>
+    </div>
+
+    <div id="adminContent">
         <header>
-            <h2>لوحة إدارة الأنشطة</h2>
-            <a href="admin.html" class="back-link">الرجوع للرئيسية ←</a>
+            <h2>لوحة إدارة الكشوفات 📋</h2>
+            <button onclick="location.reload()" style="background:none; border:none; color:red; cursor:pointer;">خروج</button>
         </header>
 
-        <div class="card">
-            <h3>إضافة نشاط جديد</h3>
-            <form id="addActivityForm">
-                <div class="form-grid">
-                    <div class="input-group full-width">
-                        <label>اسم النشاط</label>
-                        <input type="text" id="title" placeholder="" required>
-                    </div>
-                    <div class="input-group full-width">
-                        <label>الوصف</label>
-                        <textarea id="description" rows="2" placeholder=""></textarea>
-                    </div>
-                    <div class="input-group">
-                        <label>التاريخ</label>
-                        <input type="date" id="activity_date" required>
-                    </div>
-                    <div class="input-group">
-                        <label>الساعة</label>
-                        <input type="time" id="activity_time">
-                    </div>
-                </div>
-                <button type="submit" class="btn-add">نشر النشاط الآن</button>
-            </form>
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="nav-btns">
+            <a href="admin-add-activity.html">➕ إضافة نشاط جديد</a>
         </div>
 
-        <div class="card">
-            <h3>الأنشطة الحالية والإحصائيات</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>النشاط</th>
-                        <th>التاريخ</th>
-                        <th>المسجلين</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody id="activitiesTableBody">
-                    </tbody>
-            </table>
-        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم النشاط</th>
+                    <th>التاريخ</th>
+                    <th>المسجلين</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+        </table>
     </div>
 
     <script>
@@ -167,83 +73,112 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // وظيفة إضافة نشاط
-        document.getElementById('addActivityForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
-            btn.innerText = "جاري النشر...";
+        // رابط جوجل دوكس بعد تحويله لرابط تحميل مباشر للـ DOCX
+        const GOOGLE_DOCS_TEMPLATE_URL = 'https://docs.google.com/document/d/19_xLNZBNkZqA3ji6wsj9nqMvNjpUIU8E/export?format=docx';
 
-            const newActivity = {
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                activity_date: document.getElementById('activity_date').value,
-                // يمكنك إضافة عمود الوقت في الداتابيز لو حبيت، هنا هنكتفي بالداتا الأساسية
-            };
-
-            const { error } = await _supabase.from('activities').insert([newActivity]);
-
-            if (error) {
-                alert("خطأ أثناء الإضافة: " + error.message);
-            } else {
-                alert("تم إضافة النشاط بنجاح!");
-                document.getElementById('addActivityForm').reset();
+        function checkPasskey() {
+            if (document.getElementById('passkeyInput').value === "29112002") {
+                document.getElementById('lockScreen').style.display = "none";
+                document.getElementById('adminContent').style.display = "block";
                 loadActivities();
+            } else {
+                alert("الرمز غير صحيح!");
             }
-            btn.innerText = "نشر النشاط الآن";
-        });
+        }
 
-        // وظيفة تحميل الأنشطة وحساب المسجلين
+        function showError(msg) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.innerText = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
         async function loadActivities() {
-            const tbody = document.getElementById('activitiesTableBody');
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">جاري التحميل...</td></tr>';
-
-            // جلب الأنشطة
-            const { data: activities, error } = await _supabase
-                .from('activities')
-                .select(`
-                    id, 
-                    title, 
-                    activity_date,
-                    registrations (count)
-                `)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error(error);
-                return;
-            }
-
+            const { data } = await _supabase.from('activities').select('*, registrations(count)');
+            const tbody = document.getElementById('adminTableBody');
             tbody.innerHTML = '';
-            activities.forEach(act => {
-                // عدد المسجلين بيجي من العلاقة registrations
-                const regCount = act.registrations[0]?.count || 0;
-
+            data.forEach(act => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${act.title}</strong></td>
-                    <td>${act.activity_date || '---'}</td>
-                    <td><span class="stats-badge">${regCount} طالب</span></td>
-                    <td>
-                        <button class="btn-delete" onclick="deleteActivity('${act.id}')">حذف النشاط</button>
-                    </td>
+                    <td>${act.activity_date}</td>
+                    <td>${act.registrations[0]?.count || 0}</td>
+                    <td><button class="btn-download" id="btn-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">تحميل الكشف</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // وظيفة الحذف
-        async function deleteActivity(id) {
-            if (confirm("هل أنت متأكد من حذف هذا النشاط؟ سيتم حذف جميع المسجلين فيه أيضاً!")) {
-                const { error } = await _supabase.from('activities').delete().eq('id', id);
-                if (error) {
-                    alert("حدث خطأ أثناء الحذف");
-                } else {
-                    loadActivities();
-                }
-            }
+        // دالة تحميل الملف من رابط خارجي
+        async function fetchRemoteTemplate(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('فشل الوصول لملف جوجل دوكس. تأكد من إعدادات المشاركة (Anyone with the link).');
+            return await response.arrayBuffer();
         }
 
-        loadActivities();
+        async function generateDoc(actId, title, date) {
+            const btn = document.getElementById(`btn-${actId}`);
+            btn.innerText = "جاري التحميل...";
+            btn.disabled = true;
+
+            try {
+                // 1. جلب بيانات الطلاب
+                const { data: regs, error: regError } = await _supabase
+                    .from('registrations')
+                    .select('profiles(*)')
+                    .eq('activity_id', actId);
+
+                if (regError) throw new Error('خطأ في جلب البيانات من Supabase');
+
+                const studentsList = regs.map((r, i) => ({
+                    index: i + 1,
+                    full_name: r.profiles.full_name || 'غير محدد',
+                    phone: r.profiles.phone || 'غير محدد',
+                    major: r.profiles.major || 'غير محدد',
+                    year: r.profiles.academic_year || 'غير محدد'
+                }));
+
+                // 2. سحب التمبليت من جوجل دوكس
+                const templateContent = await fetchRemoteTemplate(GOOGLE_DOCS_TEMPLATE_URL);
+
+                // 3. معالجة الملف
+                const zip = new PizZip(templateContent);
+                const doc = new window.docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true,
+                });
+
+                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const dayName = days[new Date(date).getDay()];
+
+                doc.render({
+                    title: title,
+                    date: date,
+                    day: dayName,
+                    students: studentsList
+                });
+
+                const out = doc.getZip().generate({
+                    type: "blob",
+                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                });
+
+                // 4. تحميل الملف
+                saveAs(out, `كشف نشاط ${title}.docx`);
+                
+                btn.innerText = "✅ تم التحميل";
+                setTimeout(() => {
+                    btn.innerText = "تحميل الكشف";
+                    btn.disabled = false;
+                }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                showError('⚠️ حدث خطأ: ' + err.message);
+                btn.innerText = "تحميل الكشف";
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
