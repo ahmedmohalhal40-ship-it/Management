@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة الأنشطة | لوحة التحكم الشاملة</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.2/docxtemplater.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -21,6 +18,7 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg ); color: var(--primary); padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        
         #lockScreen { 
             text-align: center; 
             background: var(--white); 
@@ -42,6 +40,7 @@
             outline: none;
         }
         #lockScreen input:focus { border-color: var(--secondary); }
+        
         .admin-container { width: 100%; max-width: 1000px; display: none; }
         header {
             display: flex;
@@ -85,9 +84,11 @@
             transition: 0.3s;
         }
         .btn-add:hover { background: #2980b9; }
+        
         table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 15px; overflow: hidden; }
         th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
         th { background-color: var(--primary); color: white; }
+        
         .actions-cell { display: flex; gap: 8px; justify-content: center; }
         .btn-delete {
             background: #fdf0ef; color: var(--danger); border: 1px solid var(--danger);
@@ -103,9 +104,63 @@
             background: #e8f4fd; color: var(--secondary); padding: 4px 10px;
             border-radius: 20px; font-size: 13px; font-weight: bold;
         }
+
+        /* تنسيق خاص للطباعة فقط */
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
 <body>
+
+    <!-- منطقة الطباعة المخفية -->
+    <div id="printArea" style="display:none; padding: 40px; background: white; color: black; direction: rtl;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+            <h1 style="font-size: 24px; margin-bottom: 5px;">أسرة صناع الحياة</h1>
+            <h2 id="reportHeader" style="font-size: 20px;">كشف المشاركين في نشاط: </h2>
+        </div>
+        
+        <div style="margin-bottom: 20px; font-size: 16px;">
+            <p><strong>اليوم:</strong> <span id="reportDay"></span></p>
+            <p><strong>التاريخ:</strong> <span id="reportDate"></span></p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 1px solid #000;">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid #000; padding: 10px;">م</th>
+                    <th style="border: 1px solid #000; padding: 10px;">الاسم</th>
+                    <th style="border: 1px solid #000; padding: 10px;">الموبايل</th>
+                    <th style="border: 1px solid #000; padding: 10px;">الشعبة/الفرقة</th>
+                    <th style="border: 1px solid #000; padding: 10px;">السنة</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody">
+                <!-- سيتم ملؤه برمجياً -->
+            </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; font-size: 14px; text-align: center;">
+            <div>
+                <p>أ/ أحمد مهلهل</p>
+                <p>أ/ ندى حاتم</p>
+                <p>الهيئة المعاونة</p>
+            </div>
+            <div>
+                <p>أ/ مريم محمد</p>
+                <p>د/ ايناس شكر</p>
+                <p>مشرف اللجنة</p>
+            </div>
+            <div>
+                <p>م/ مديحة البطران</p>
+                  
+
+                <p>مشرف عام الأنشطة</p>
+            </div>
+        </div>
+    </div>
 
     <div id="lockScreen">
         <h2 style="margin-bottom: 10px;">🔒 دخول الإدارة</h2>
@@ -166,9 +221,6 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY );
 
-        // تم تنظيف كود Base64 بالكامل لضمان عدم وجود أخطاء في التشفير
-        const TEMPLATE_BASE64 = "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";
-
         function checkPasskey() {
             const input = document.getElementById('passkeyInput').value;
             if (input === "29112002") {
@@ -222,7 +274,7 @@
                     <td>${act.activity_date || '---'}</td>
                     <td><span class="stats-badge">${regCount} طالب</span></td>
                     <td class="actions-cell">
-                        <button class="btn-download" id="dl-${act.id}" onclick="generateDoc('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
+                        <button class="btn-download" id="dl-${act.id}" onclick="generateReport('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
                         <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️ حذف</button>
                     </td>
                 `;
@@ -230,22 +282,13 @@
             });
         }
 
-        // دالة تحويل Base64 إلى ArrayBuffer بشكل آمن
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        async function generateDoc(actId, title, date) {
+        async function generateReport(actId, title, date) {
             const btn = document.getElementById(`dl-${actId}`);
             btn.innerText = "...";
             btn.disabled = true;
 
             try {
+                // 1. جلب بيانات المسجلين
                 const { data: regs, error: regsError } = await _supabase
                     .from('registrations')
                     .select('profiles(*)')
@@ -253,36 +296,32 @@
 
                 if (regsError) throw new Error(`خطأ في جلب المسجلين: ${regsError.message}`);
 
-                const studentsList = regs.map((r, i) => ({
-                    index: i + 1,
-                    full_name: r.profiles.full_name,
-                    phone: r.profiles.phone,
-                    major: r.profiles.major,
-                    year: r.profiles.academic_year
-                }));
-
-                // استخدام القالب المدمج
-                const content = base64ToArrayBuffer(TEMPLATE_BASE64);
-
-                const zip = new PizZip(content);
-                const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-                
+                // 2. ملء بيانات التقرير
+                document.getElementById('reportHeader').innerText = `كشف المشاركين في نشاط: ${title}`;
                 const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                const dayName = days[new Date(date).getDay()];
+                document.getElementById('reportDay').innerText = days[new Date(date).getDay()];
+                document.getElementById('reportDate').innerText = date;
 
-                doc.render({
-                    title: title,
-                    date: date,
-                    day: dayName,
-                    students: studentsList
+                const reportTbody = document.getElementById('reportTableBody');
+                reportTbody.innerHTML = '';
+                
+                regs.forEach((r, i) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${i + 1}</td>
+                        <td style="border: 1px solid #000; padding: 8px;">${r.profiles.full_name}</td>
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${r.profiles.phone}</td>
+                        <td style="border: 1px solid #000; padding: 8px;">${r.profiles.major}</td>
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${r.profiles.academic_year}</td>
+                    `;
+                    reportTbody.appendChild(tr);
                 });
 
-                const out = doc.getZip().generate({
-                    type: "blob",
-                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                });
-
-                saveAs(out, `كشف_${title}.docx`);
+                // 3. فتح نافذة الطباعة
+                const printArea = document.getElementById('printArea');
+                printArea.style.display = 'block';
+                window.print();
+                printArea.style.display = 'none';
 
             } catch (e) {
                 console.error(e);
