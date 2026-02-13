@@ -19,152 +19,119 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg ); color: var(--primary); padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
         
-        #lockScreen { 
-            text-align: center; 
-            background: var(--white); 
-            padding: 40px; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-            width: 100%; 
-            max-width: 400px; 
-            margin-top: 10vh;
-        }
-        #lockScreen input { 
-            padding: 12px; 
-            border: 2px solid #ddd; 
-            border-radius: 10px; 
-            margin-bottom: 15px; 
-            width: 100%; 
-            text-align: center; 
-            font-size: 18px;
-            outline: none;
-        }
-        #lockScreen input:focus { border-color: var(--secondary); }
-        
+        /* لوحة التحكم */
+        #lockScreen { text-align: center; background: var(--white); padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-top: 10vh; }
+        #lockScreen input { padding: 12px; border: 2px solid #ddd; border-radius: 10px; margin-bottom: 15px; width: 100%; text-align: center; font-size: 18px; outline: none; }
         .admin-container { width: 100%; max-width: 1000px; display: none; }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background: var(--white);
-            padding: 15px 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .card {
-            background: var(--white);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-        }
-        .card h3 { margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: var(--white); padding: 15px 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .card { background: var(--white); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .input-group { margin-bottom: 15px; text-align: right; }
         .full-width { grid-column: span 2; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #eee;
-            border-radius: 8px;
-            outline: none;
-        }
-        .btn-add {
-            background: var(--secondary);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            font-size: 16px;
-            transition: 0.3s;
-        }
-        .btn-add:hover { background: #2980b9; }
-        
+        input, textarea { width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 8px; outline: none; }
+        .btn-add { background: var(--secondary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; transition: 0.3s; }
         table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 15px; overflow: hidden; }
         th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
         th { background-color: var(--primary); color: white; }
-        
-        .actions-cell { display: flex; gap: 8px; justify-content: center; }
-        .btn-delete {
-            background: #fdf0ef; color: var(--danger); border: 1px solid var(--danger);
-            padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;
-        }
-        .btn-delete:hover { background: var(--danger); color: white; }
-        .btn-download {
-            background: #e9f7ef; color: #27ae60; border: 1px solid #27ae60;
-            padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;
-        }
-        .btn-download:hover { background: #27ae60; color: white; }
-        .stats-badge {
-            background: #e8f4fd; color: var(--secondary); padding: 4px 10px;
-            border-radius: 20px; font-size: 13px; font-weight: bold;
-        }
+        .btn-download { background: #e9f7ef; color: #27ae60; border: 1px solid #27ae60; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-delete { background: #fdf0ef; color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
 
-        /* تنسيق خاص للطباعة فقط */
+        /* تنسيق الطباعة */
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+            .page-break { page-break-before: always; }
+            /* إخفاء الهوامش الافتراضية للمتصفح (التاريخ، العنوان، إلخ) */
+            @page { margin: 1cm; size: auto; }
         }
+
+        /* تنسيق منطقة التقرير */
+        #printArea { display: none; padding: 20px; direction: rtl; }
+        .report-page { min-height: 29cm; padding: 40px; background: white; position: relative; }
+        .report-header { text-align: center; margin-bottom: 40px; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 60px; text-align: center; font-size: 14px; }
+        .signature-block { display: flex; flex-direction: column; gap: 5px; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .report-table th, .report-table td { border: 1px solid black; padding: 8px; text-align: center; color: black; }
     </style>
 </head>
 <body>
 
-    <!-- منطقة الطباعة المخفية -->
-    <div id="printArea" style="display:none; padding: 40px; background: white; color: black; direction: rtl;">
-        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px;">
-            <h1 style="font-size: 24px; margin-bottom: 5px;">أسرة صناع الحياة</h1>
-            <h2 id="reportHeader" style="font-size: 20px;">كشف المشاركين في نشاط: </h2>
-        </div>
-        
-        <div style="margin-bottom: 20px; font-size: 16px;">
-            <p><strong>اليوم:</strong> <span id="reportDay"></span></p>
-            <p><strong>التاريخ:</strong> <span id="reportDate"></span></p>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 1px solid #000;">
-            <thead>
-                <tr style="background-color: #f2f2f2;">
-                    <th style="border: 1px solid #000; padding: 10px;">م</th>
-                    <th style="border: 1px solid #000; padding: 10px;">الاسم</th>
-                    <th style="border: 1px solid #000; padding: 10px;">الموبايل</th>
-                    <th style="border: 1px solid #000; padding: 10px;">الشعبة/الفرقة</th>
-                    <th style="border: 1px solid #000; padding: 10px;">السنة</th>
-                </tr>
-            </thead>
-            <tbody id="reportTableBody">
-                <!-- سيتم ملؤه برمجياً -->
-            </tbody>
-        </table>
-
-        <div style="display: flex; justify-content: space-between; margin-top: 50px; font-size: 14px; text-align: center;">
-            <div>
-                <p>أ/ أحمد مهلهل</p>
-                <p>أ/ ندى حاتم</p>
-                <p>الهيئة المعاونة</p>
+    <!-- منطقة الطباعة -->
+    <div id="printArea">
+        <!-- الصفحة الأولى: الطلب -->
+        <div class="report-page">
+            <div class="report-header">
+                <h1 style="font-size: 24px; margin-bottom: 10px;">أسرة صناع الحياة</h1>
+                <h2 style="font-size: 20px; border-bottom: 2px solid #000; display: inline-block; padding-bottom: 5px;">طلب لعمل ورشة (<span class="p-title"></span>)</h2>
             </div>
-            <div>
-                <p>أ/ مريم محمد</p>
-                <p>د/ ايناس شكر</p>
-                <p>مشرف اللجنة</p>
+            
+            <div style="font-size: 18px; line-height: 2; margin-top: 40px;">
+                <p>تحية طيبة وبعد نرجو من سيادتكم الموافقة على عمل ورشة (<span class="p-title"></span>) وذلك يوم (<span class="p-day"></span>) بتاريخ (<span class="p-date"></span>) ولسيادتكم جزيل الشكر...</p>
             </div>
-            <div>
-                <p>م/ مديحة البطران</p>
-                  
 
-                <p>مشرف عام الأنشطة</p>
+            <div class="signatures" style="margin-top: 100px;">
+                <div class="signature-block">
+                    <p><strong>الهيئة المعاونة</strong></p>
+                    <p>أ/ ريم محمد</p>
+                    <p>أ/ ندى حاتم</p>
+                    <p>أ/ أحمد مهلهل</p>
+                </div>
+                <div class="signature-block">
+                    <p><strong>مشرف لجنة</strong></p>
+                    <p>د/ ايناس شكر</p>
+                </div>
+                <div class="signature-block">
+                    <p><strong>مشرف عام الأنشطة</strong></p>
+                    <p>م/ مديحة البطران</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- الصفحة الثانية: الكشف -->
+        <div class="report-page page-break">
+            <div class="report-header">
+                <h1 style="font-size: 24px; margin-bottom: 10px;">أسرة صناع الحياة</h1>
+                <h2 style="font-size: 18px;">كشف المشاركين في نشاط: <span class="p-title"></span></h2>
+                <p>يوم: <span class="p-day"></span> - بتاريخ: <span class="p-date"></span></p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th>م</th>
+                        <th>الاسم</th>
+                        <th>الموبايل</th>
+                        <th>الشعبة/الفرقة</th>
+                        <th>السنة</th>
+                    </tr>
+                </thead>
+                <tbody id="p-table-body"></tbody>
+            </table>
+
+            <div class="signatures">
+                <div class="signature-block">
+                    <p><strong>الهيئة المعاونة</strong></p>
+                    <p>أ/ ريم محمد</p>
+                    <p>أ/ ندى حاتم</p>
+                    <p>أ/ أحمد مهلهل</p>
+                </div>
+                <div class="signature-block">
+                    <p><strong>مشرف لجنة</strong></p>
+                    <p>د/ ايناس شكر</p>
+                </div>
+                <div class="signature-block">
+                    <p><strong>مشرف عام الأنشطة</strong></p>
+                    <p>م/ مديحة البطران</p>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- واجهة لوحة التحكم -->
     <div id="lockScreen">
-        <h2 style="margin-bottom: 10px;">🔒 دخول الإدارة</h2>
-        <p style="margin-bottom: 20px; color: #666; font-size: 14px;">أدخل الرمز السري للوصول للوحة التحكم</p>
+        <h2>🔒 دخول الإدارة</h2>
         <input type="password" id="passkeyInput" placeholder="Passkey">
         <button onclick="checkPasskey()" class="btn-add">دخول</button>
     </div>
@@ -172,45 +139,26 @@
     <div class="admin-container" id="adminContent">
         <header>
             <h2>لوحة الإدارة الشاملة 📋</h2>
-            <button onclick="location.reload()" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">تسجيل الخروج ←</button>
+            <button onclick="location.reload()" style="color:var(--danger); cursor:pointer; background:none; border:none;">تسجيل الخروج ←</button>
         </header>
 
         <div class="card">
             <h3>➕ إضافة نشاط جديد</h3>
             <form id="addActivityForm">
                 <div class="form-grid">
-                    <div class="input-group full-width">
-                        <label>اسم النشاط</label>
-                        <input type="text" id="title" placeholder="اكتب اسم النشاط هنا" required>
-                    </div>
-                    <div class="input-group full-width">
-                        <label>الوصف</label>
-                        <textarea id="description" rows="2" placeholder="تفاصيل النشاط..."></textarea>
-                    </div>
-                    <div class="input-group">
-                        <label>التاريخ</label>
-                        <input type="date" id="activity_date" required>
-                    </div>
-                    <div class="input-group">
-                        <label>الساعة</label>
-                        <input type="time" id="activity_time">
-                    </div>
+                    <div class="input-group full-width"><label>اسم النشاط</label><input type="text" id="title" required></div>
+                    <div class="input-group full-width"><label>الوصف</label><textarea id="description" rows="2"></textarea></div>
+                    <div class="input-group"><label>التاريخ</label><input type="date" id="activity_date" required></div>
+                    <div class="input-group"><label>الساعة</label><input type="time" id="activity_time"></div>
                 </div>
                 <button type="submit" class="btn-add">نشر النشاط الآن</button>
             </form>
         </div>
 
         <div class="card">
-            <h3>📊 الأنشطة الحالية والإحصائيات</h3>
+            <h3>📊 الأنشطة الحالية</h3>
             <table>
-                <thead>
-                    <tr>
-                        <th>النشاط</th>
-                        <th>التاريخ</th>
-                        <th>المسجلين</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>النشاط</th><th>التاريخ</th><th>المسجلين</th><th>الإجراءات</th></tr></thead>
                 <tbody id="activitiesTableBody"></tbody>
             </table>
         </div>
@@ -222,121 +170,63 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY );
 
         function checkPasskey() {
-            const input = document.getElementById('passkeyInput').value;
-            if (input === "29112002") {
+            if (document.getElementById('passkeyInput').value === "29112002") {
                 document.getElementById('lockScreen').style.display = "none";
                 document.getElementById('adminContent').style.display = "block";
                 loadActivities();
-            } else {
-                alert("الرمز غير صحيح!");
-            }
+            } else alert("الرمز غير صحيح!");
         }
 
         document.getElementById('addActivityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button');
-            btn.innerText = "جاري النشر...";
-            btn.disabled = true;
-
             const { error } = await _supabase.from('activities').insert([{
                 title: document.getElementById('title').value,
                 description: document.getElementById('description').value,
                 activity_date: document.getElementById('activity_date').value
             }]);
-
-            if (error) alert("خطأ: " + error.message);
-            else {
-                alert("تم إضافة النشاط بنجاح!");
-                document.getElementById('addActivityForm').reset();
-                loadActivities();
-            }
-            btn.innerText = "نشر النشاط الآن";
-            btn.disabled = false;
+            if (error) alert(error.message);
+            else { alert("تم الإضافة!"); loadActivities(); }
         });
 
         async function loadActivities() {
+            const { data: activities } = await _supabase.from('activities').select(`id, title, activity_date, registrations (count)`).order('created_at', { ascending: false });
             const tbody = document.getElementById('activitiesTableBody');
-            tbody.innerHTML = '<tr><td colspan="4">جاري التحميل...</td></tr>';
-
-            const { data: activities, error } = await _supabase
-                .from('activities')
-                .select(`id, title, activity_date, registrations (count)`)
-                .order('created_at', { ascending: false });
-
-            if (error) return;
-
             tbody.innerHTML = '';
             activities.forEach(act => {
-                const regCount = act.registrations[0]?.count || 0;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${act.title}</strong></td>
-                    <td>${act.activity_date || '---'}</td>
-                    <td><span class="stats-badge">${regCount} طالب</span></td>
+                tr.innerHTML = `<td>${act.title}</td><td>${act.activity_date}</td><td>${act.registrations[0]?.count || 0}</td>
                     <td class="actions-cell">
-                        <button class="btn-download" id="dl-${act.id}" onclick="generateReport('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
-                        <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️ حذف</button>
-                    </td>
-                `;
+                        <button class="btn-download" onclick="generateReport('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
+                        <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️</button>
+                    </td>`;
                 tbody.appendChild(tr);
             });
         }
 
         async function generateReport(actId, title, date) {
-            const btn = document.getElementById(`dl-${actId}`);
-            btn.innerText = "...";
-            btn.disabled = true;
+            const { data: regs } = await _supabase.from('registrations').select('profiles(*)').eq('activity_id', actId);
+            
+            // ملء البيانات في منطقة الطباعة
+            document.querySelectorAll('.p-title').forEach(el => el.innerText = title);
+            document.querySelectorAll('.p-date').forEach(el => el.innerText = date);
+            const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            document.querySelectorAll('.p-day').forEach(el => el.innerText = days[new Date(date).getDay()]);
 
-            try {
-                // 1. جلب بيانات المسجلين
-                const { data: regs, error: regsError } = await _supabase
-                    .from('registrations')
-                    .select('profiles(*)')
-                    .eq('activity_id', actId);
+            const tableBody = document.getElementById('p-table-body');
+            tableBody.innerHTML = '';
+            regs.forEach((r, i) => {
+                tableBody.innerHTML += `<tr><td>${i+1}</td><td>${r.profiles.full_name}</td><td>${r.profiles.phone}</td><td>${r.profiles.major}</td><td>${r.profiles.academic_year}</td></tr>`;
+            });
 
-                if (regsError) throw new Error(`خطأ في جلب المسجلين: ${regsError.message}`);
-
-                // 2. ملء بيانات التقرير
-                document.getElementById('reportHeader').innerText = `كشف المشاركين في نشاط: ${title}`;
-                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                document.getElementById('reportDay').innerText = days[new Date(date).getDay()];
-                document.getElementById('reportDate').innerText = date;
-
-                const reportTbody = document.getElementById('reportTableBody');
-                reportTbody.innerHTML = '';
-                
-                regs.forEach((r, i) => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${i + 1}</td>
-                        <td style="border: 1px solid #000; padding: 8px;">${r.profiles.full_name}</td>
-                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${r.profiles.phone}</td>
-                        <td style="border: 1px solid #000; padding: 8px;">${r.profiles.major}</td>
-                        <td style="border: 1px solid #000; padding: 8px; text-align: center;">${r.profiles.academic_year}</td>
-                    `;
-                    reportTbody.appendChild(tr);
-                });
-
-                // 3. فتح نافذة الطباعة
-                const printArea = document.getElementById('printArea');
-                printArea.style.display = 'block';
-                window.print();
-                printArea.style.display = 'none';
-
-            } catch (e) {
-                console.error(e);
-                alert("حدث خطأ: " + e.message);
-            } finally {
-                btn.innerText = "📥 كشف";
-                btn.disabled = false;
-            }
+            // الطباعة
+            const printArea = document.getElementById('printArea');
+            printArea.style.display = 'block';
+            window.print();
+            printArea.style.display = 'none';
         }
 
         async function deleteActivity(id) {
-            if (confirm("حذف النشاط نهائياً؟")) {
-                await _supabase.from('activities').delete().eq('id', id);
-                loadActivities();
-            }
+            if (confirm("حذف؟")) { await _supabase.from('activities').delete().eq('id', id); loadActivities(); }
         }
     </script>
 </body>
