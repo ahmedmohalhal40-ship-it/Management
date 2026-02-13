@@ -120,43 +120,50 @@
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
             background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
         }
         .modal-content {
             background-color: var(--white);
-            margin: 5% auto;
+            margin: 3% auto;
             padding: 30px;
             border-radius: 15px;
             width: 90%;
-            max-width: 700px;
-            max-height: 80vh;
-            overflow-y: auto;
+            max-width: 800px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             padding-bottom: 15px;
             border-bottom: 2px solid var(--bg);
         }
-        .close-modal {
-            color: var(--danger);
-            font-size: 28px;
+        .close {
+            font-size: 32px;
             font-weight: bold;
             cursor: pointer;
-            background: none;
-            border: none;
+            color: var(--danger);
+            line-height: 1;
+        }
+        .close:hover { color: #c0392b; }
+
+        .attendance-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
         }
         .attendance-item {
             display: flex;
             align-items: center;
             padding: 12px;
-            margin-bottom: 10px;
-            background: var(--bg);
+            border: 2px solid #eee;
             border-radius: 8px;
+            margin-bottom: 10px;
+            transition: 0.3s;
         }
+        .attendance-item:hover { background-color: #f8f9fa; }
         .attendance-item input[type="checkbox"] {
             width: 20px;
             height: 20px;
@@ -164,22 +171,39 @@
             cursor: pointer;
         }
         .attendance-item label {
-            flex: 1;
+            flex-grow: 1;
             cursor: pointer;
-            margin: 0;
+            font-size: 16px;
+            margin-bottom: 0;
         }
+
         .image-upload {
             margin: 20px 0;
             padding: 20px;
             border: 2px dashed #ddd;
-            border-radius: 10px;
+            border-radius: 8px;
             text-align: center;
         }
+        .image-upload input[type="file"] {
+            display: none;
+        }
+        .upload-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .upload-label:hover { background: #2980b9; }
+
         .image-preview {
             margin-top: 15px;
             max-width: 100%;
-            max-height: 300px;
+            max-height: 200px;
             border-radius: 8px;
+            display: none;
         }
 
         /* تنسيق خاص للطباعة فقط */
@@ -212,7 +236,7 @@
 </head>
 <body>
 
-    <!-- منطقة الطباعة للكشف (صفحتين) -->
+    <!-- منطقة الطباعة المخفية -->
     <div id="printArea" style="display:none; padding: 0; background: white; color: black; direction: rtl;">
 
         <!-- الصفحة الأولى: طلب الورشة -->
@@ -268,7 +292,9 @@
                         <th style="border: 1px solid #000; padding: 10px;">السنة</th>
                     </tr>
                 </thead>
-                <tbody id="reportTableBody"></tbody>
+                <tbody id="reportTableBody">
+                    <!-- سيتم ملؤه برمجياً -->
+                </tbody>
             </table>
 
             <div style="display: flex; justify-content: space-between; margin-top: 50px; font-size: 14px; text-align: center;">
@@ -290,70 +316,39 @@
         </div>
     </div>
 
-    <!-- منطقة طباعة تقرير الغياب (صفحة واحدة فقط) -->
+    <!-- منطقة طباعة تقرير الحضور -->
     <div id="attendanceReportArea" style="display:none; padding: 60px 50px; background: white; color: black; direction: rtl;">
         <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="font-size: 32px; font-weight: bold;">أسرة صناع الحياة</h1>
+            <h1 style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">أسرة صناع الحياة</h1>
         </div>
 
         <div style="font-size: 18px; line-height: 2.2; text-align: justify; margin-bottom: 40px;">
-            <p style="text-indent: 30px;">
-                تم عمل ورشة <strong><span id="attReportTitle"></span></strong> يوم 
-                <strong><span id="attReportDay"></span></strong> الموافق 
-                <strong><span id="attReportDate"></span></strong> من أسرة صناع الحياة ساعة 
-                <strong><span id="attReportTime"></span></strong> بمشاركة الطلاب الآتي أسماؤهم:
-            </p>
+            <p>تم عمل ورشة <strong id="attReportTitle"></strong> يوم <strong id="attReportDay"></strong> الموافق <strong id="attReportDate"></strong> من أسرة صناع الحياة ساعة <strong id="attReportTime"></strong> بمشاركة الطلاب الآتي أسماؤهم:</p>
         </div>
 
-        <div id="attReportList" style="font-size: 16px; line-height: 2; margin-bottom: 40px; padding-right: 40px;">
-            <!-- سيتم ملؤه بأسماء الحاضرين -->
+        <div id="attReportList" style="font-size: 16px; line-height: 2; margin-bottom: 40px; padding-right: 30px;">
+            <!-- سيتم ملؤه برمجياً -->
         </div>
 
-        <div id="attReportImage" style="text-align: center; margin: 40px 0;">
-            <!-- الصورة ستظهر هنا إن وجدت -->
+        <div id="attReportImageContainer" style="text-align: center; margin: 40px 0;">
+            <!-- سيتم وضع الصورة هنا -->
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-top: 80px; font-size: 14px; text-align: center;">
+        <div style="display: flex; justify-content: space-between; margin-top: 80px; font-size: 16px; text-align: center;">
             <div style="line-height: 2;">
                 <p><strong>الهيئة المعاونة</strong></p>
-                <p style="margin-top: 10px;">أ/ ريم محمد</p>
+                <p style="margin-top: 15px;">أ/ ريم محمد</p>
                 <p>أ/ ندى حاتم</p>
                 <p>أ/ أحمد مهلهل</p>
             </div>
             <div style="line-height: 2;">
                 <p><strong>مشرف اللجنة</strong></p>
-                <p style="margin-top: 10px;">د/ ايناس شكر</p>
+                <p style="margin-top: 15px;">د/ ايناس شكر</p>
             </div>
             <div style="line-height: 2;">
                 <p><strong>مشرف عام الأنشطة</strong></p>
-                <p style="margin-top: 10px;">م/ مديحة البطران</p>
+                <p style="margin-top: 15px;">م/ مديحة البطران</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal الغياب -->
-    <div id="attendanceModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>📝 أخذ الغياب - <span id="modalActivityTitle"></span></h2>
-                <button class="close-modal" onclick="closeAttendanceModal()">&times;</button>
-            </div>
-
-            <div id="attendanceList">
-                <!-- سيتم ملؤه بالأسماء -->
-            </div>
-
-            <div class="image-upload">
-                <label for="activityImageUpload" style="cursor: pointer; color: var(--secondary); font-weight: bold;">
-                    📷 رفع صورة النشاط (اختياري)
-                </label>
-                <input type="file" id="activityImageUpload" accept="image/*" style="display:none;" onchange="previewImage(event)">
-                <img id="imagePreview" class="image-preview" style="display:none;">
-            </div>
-
-            <button class="btn-add" onclick="generateAttendanceReport()" style="margin-top: 20px;">
-                📥 حفظ وطباعة تقرير الغياب
-            </button>
         </div>
     </div>
 
@@ -388,7 +383,7 @@
                     </div>
                     <div class="input-group">
                         <label>الساعة</label>
-                        <input type="time" id="activity_time" required>
+                        <input type="time" id="activity_time">
                     </div>
                 </div>
                 <button type="submit" class="btn-add">نشر النشاط الآن</button>
@@ -411,13 +406,39 @@
         </div>
     </div>
 
+    <!-- Modal أخذ الغياب -->
+    <div id="attendanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 تسجيل حضور النشاط: <span id="modalActivityTitle"></span></h2>
+                <span class="close" onclick="closeAttendanceModal()">&times;</span>
+            </div>
+
+            <div class="attendance-list" id="attendanceList">
+                <!-- سيتم ملؤه برمجياً -->
+            </div>
+
+            <div class="image-upload">
+                <label for="activityImage" class="upload-label">📷 رفع صورة النشاط</label>
+                <input type="file" id="activityImage" accept="image/*" onchange="previewImage(event)">
+                <p style="margin-top: 10px; font-size: 14px; color: #666;">اختياري - يمكنك رفع صورة للنشاط</p>
+                <img id="imagePreview" class="image-preview">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="saveAttendanceAndPrint()" class="btn-add" style="flex: 1;">💾 حفظ وطباعة التقرير</button>
+                <button onclick="closeAttendanceModal()" class="btn-delete" style="flex: 0.3;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://avikwgcqddywzqajumrn.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aWt3Z2NxZGR5d3pxYWp1bXJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjQxODUsImV4cCI6MjA4NjUwMDE4NX0.ku71P-PCxZGTGI3gLO0odcu85HC-I9_L89f3zNvw8Jk';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentActivityData = null;
-        let uploadedImageData = null;
+        let uploadedImageBase64 = null;
 
         function checkPasskey() {
             const input = document.getElementById('passkeyInput').value;
@@ -474,7 +495,7 @@
                     <td><span class="stats-badge">${regCount} طالب</span></td>
                     <td class="actions-cell">
                         <button class="btn-download" id="dl-${act.id}" onclick="generateReport('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
-                        <button class="btn-attendance" onclick="openAttendanceModal('${act.id}', '${act.title}', '${act.activity_date}', '${act.activity_time || ''}')">✓ غياب</button>
+                        <button class="btn-attendance" onclick="openAttendanceModal('${act.id}', '${act.title}', '${act.activity_date}', '${act.activity_time || ''}')">✅ غياب</button>
                         <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️ حذف</button>
                     </td>
                 `;
@@ -537,45 +558,37 @@
         }
 
         async function openAttendanceModal(actId, title, date, time) {
-            try {
-                const { data: regs, error } = await _supabase
-                    .from('registrations')
-                    .select('id, profiles(*)')
-                    .eq('activity_id', actId);
+            currentActivityData = { id: actId, title, date, time };
+            uploadedImageBase64 = null;
 
-                if (error) throw error;
+            document.getElementById('modalActivityTitle').innerText = title;
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('activityImage').value = '';
 
-                currentActivityData = {
-                    id: actId,
-                    title: title,
-                    date: date,
-                    time: time || '12:00'
-                };
+            const { data: regs, error } = await _supabase
+                .from('registrations')
+                .select('id, profiles(*)')
+                .eq('activity_id', actId);
 
-                document.getElementById('modalActivityTitle').innerText = title;
-
-                const list = document.getElementById('attendanceList');
-                list.innerHTML = '';
-
-                regs.forEach(reg => {
-                    const div = document.createElement('div');
-                    div.className = 'attendance-item';
-                    div.innerHTML = `
-                        <input type="checkbox" id="att_${reg.id}" value="${reg.id}" checked>
-                        <label for="att_${reg.id}">${reg.profiles.full_name}</label>
-                    `;
-                    list.appendChild(div);
-                });
-
-                document.getElementById('imagePreview').style.display = 'none';
-                document.getElementById('activityImageUpload').value = '';
-                uploadedImageData = null;
-
-                document.getElementById('attendanceModal').style.display = 'block';
-
-            } catch (e) {
-                alert("خطأ في تحميل البيانات: " + e.message);
+            if (error) {
+                alert("خطأ في جلب البيانات");
+                return;
             }
+
+            const listDiv = document.getElementById('attendanceList');
+            listDiv.innerHTML = '';
+
+            regs.forEach(reg => {
+                const item = document.createElement('div');
+                item.className = 'attendance-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="att-${reg.id}" data-name="${reg.profiles.full_name}" checked>
+                    <label for="att-${reg.id}">${reg.profiles.full_name}</label>
+                `;
+                listDiv.appendChild(item);
+            });
+
+            document.getElementById('attendanceModal').style.display = 'block';
         }
 
         function closeAttendanceModal() {
@@ -587,7 +600,7 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    uploadedImageData = e.target.result;
+                    uploadedImageBase64 = e.target.result;
                     const preview = document.getElementById('imagePreview');
                     preview.src = e.target.result;
                     preview.style.display = 'block';
@@ -596,61 +609,53 @@
             }
         }
 
-        async function generateAttendanceReport() {
-            try {
-                const checkboxes = document.querySelectorAll('#attendanceList input[type="checkbox"]:checked');
-                const attendedIds = Array.from(checkboxes).map(cb => cb.value);
+        function saveAttendanceAndPrint() {
+            if (!currentActivityData) return;
 
-                if (attendedIds.length === 0) {
-                    alert("يجب تحديد طالب واحد على الأقل!");
-                    return;
-                }
+            const checkboxes = document.querySelectorAll('#attendanceList input[type="checkbox"]:checked');
+            const attendedNames = Array.from(checkboxes).map(cb => cb.getAttribute('data-name'));
 
-                const { data: attendedStudents, error } = await _supabase
-                    .from('registrations')
-                    .select('profiles(full_name)')
-                    .in('id', attendedIds);
+            if (attendedNames.length === 0) {
+                alert("يرجى تحديد الطلاب الحاضرين على الأقل");
+                return;
+            }
 
-                if (error) throw error;
+            const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const dayName = days[new Date(currentActivityData.date).getDay()];
 
-                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-                const dayName = days[new Date(currentActivityData.date).getDay()];
+            document.getElementById('attReportTitle').innerText = currentActivityData.title;
+            document.getElementById('attReportDay').innerText = dayName;
+            document.getElementById('attReportDate').innerText = currentActivityData.date;
+            document.getElementById('attReportTime').innerText = currentActivityData.time || '12:00 م';
 
-                document.getElementById('attReportTitle').innerText = currentActivityData.title;
-                document.getElementById('attReportDay').innerText = dayName;
-                document.getElementById('attReportDate').innerText = currentActivityData.date;
-                document.getElementById('attReportTime').innerText = currentActivityData.time;
+            const listDiv = document.getElementById('attReportList');
+            listDiv.innerHTML = '';
+            attendedNames.forEach((name, i) => {
+                const p = document.createElement('p');
+                p.innerHTML = `${i + 1}. ${name}`;
+                listDiv.appendChild(p);
+            });
 
-                const listDiv = document.getElementById('attReportList');
-                listDiv.innerHTML = '';
-                attendedStudents.forEach((student, i) => {
-                    const p = document.createElement('p');
-                    p.innerText = `${i + 1}. ${student.profiles.full_name}`;
-                    listDiv.appendChild(p);
-                });
+            const imageContainer = document.getElementById('attReportImageContainer');
+            imageContainer.innerHTML = '';
+            if (uploadedImageBase64) {
+                const img = document.createElement('img');
+                img.src = uploadedImageBase64;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '400px';
+                img.style.borderRadius = '10px';
+                img.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+                imageContainer.appendChild(img);
+            }
 
-                const imageDiv = document.getElementById('attReportImage');
-                imageDiv.innerHTML = '';
-                if (uploadedImageData) {
-                    const img = document.createElement('img');
-                    img.src = uploadedImageData;
-                    img.style.maxWidth = '600px';
-                    img.style.maxHeight = '400px';
-                    img.style.borderRadius = '10px';
-                    img.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
-                    imageDiv.appendChild(img);
-                }
+            closeAttendanceModal();
 
-                closeAttendanceModal();
-
+            setTimeout(() => {
                 const reportArea = document.getElementById('attendanceReportArea');
                 reportArea.style.display = 'block';
                 window.print();
                 reportArea.style.display = 'none';
-
-            } catch (e) {
-                alert("حدث خطأ: " + e.message);
-            }
+            }, 100);
         }
 
         async function deleteActivity(id) {
@@ -662,7 +667,7 @@
 
         window.onclick = function(event) {
             const modal = document.getElementById('attendanceModal');
-            if (event.target == modal) {
+            if (event.target === modal) {
                 closeAttendanceModal();
             }
         }
