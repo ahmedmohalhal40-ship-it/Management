@@ -85,6 +85,7 @@
             transition: 0.3s;
         }
         .btn-add:hover { background: #2980b9; }
+        .btn-add:disabled { background: #95a5a6; cursor: not-allowed; }
 
         table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 15px; overflow: hidden; }
         th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
@@ -101,6 +102,7 @@
             padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;
         }
         .btn-download:hover { background: #27ae60; color: white; }
+        .btn-download:disabled { background: #ddd; color: #999; cursor: not-allowed; border-color: #ddd; }
         .btn-attendance {
             background: #fff3e0; color: var(--warning); border: 1px solid var(--warning);
             padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;
@@ -215,11 +217,18 @@
 
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
+            #attendanceReportArea, #attendanceReportArea * { visibility: visible; }
             #printArea { 
                 position: absolute; 
                 left: 0; 
                 top: 0; 
                 width: 100%; 
+            }
+            #attendanceReportArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
             }
 
             .page-break {
@@ -401,7 +410,9 @@
                         <th>الإجراءات</th>
                     </tr>
                 </thead>
-                <tbody id="activitiesTableBody"></tbody>
+                <tbody id="activitiesTableBody">
+                    <tr><td colspan="4">جاري التحميل...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
@@ -457,50 +468,104 @@
             btn.innerText = "جاري النشر...";
             btn.disabled = true;
 
-            const { error } = await _supabase.from('activities').insert([{
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                activity_date: document.getElementById('activity_date').value,
-                activity_time: document.getElementById('activity_time').value
-            }]);
+            try {
+                const { error } = await _supabase.from('activities').insert([{
+                    title: document.getElementById('title').value,
+                    description: document.getElementById('description').value,
+                    activity_date: document.getElementById('activity_date').value,
+                    activity_time: document.getElementById('activity_time').value
+                }]);
 
-            if (error) alert("خطأ: " + error.message);
-            else {
+                if (error) throw error;
+
                 alert("تم إضافة النشاط بنجاح!");
                 document.getElementById('addActivityForm').reset();
                 loadActivities();
+            } catch (error) {
+                console.error('خطأ في إضافة النشاط:', error);
+                alert("خطأ: " + error.message);
+            } finally {
+                btn.innerText = "نشر النشاط الآن";
+                btn.disabled = false;
             }
-            btn.innerText = "نشر النشاط الآن";
-            btn.disabled = false;
         });
 
+        // دالة مساعدة لحماية النصوص في onclick
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeQuotes(str) {
+            if (!str) return '';
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        // الدالة المُصلحة لتحميل الأنشطة
         async function loadActivities() {
+            console.log('🔄 بدء تحميل الأنشطة...');
             const tbody = document.getElementById('activitiesTableBody');
             tbody.innerHTML = '<tr><td colspan="4">جاري التحميل...</td></tr>';
 
-            const { data: activities, error } = await _supabase
-                .from('activities')
-                .select(`id, title, activity_date, activity_time, registrations (count)`)
-                .order('created_at', { ascending: false });
+            try {
+                // جلب الأنشطة مع التسجيلات
+                const { data: activities, error: actError } = await _supabase
+                    .from('activities')
+                    .select(`
+                        id, 
+                        title, 
+                        activity_date, 
+                        activity_time,
+                        registrations (id)
+                    `)
+                    .order('created_at', { ascending: false });
 
-            if (error) return;
+                console.log('📊 البيانات المستلمة:', activities);
+                console.log('❌ الأخطاء:', actError);
 
-            tbody.innerHTML = '';
-            activities.forEach(act => {
-                const regCount = act.registrations[0]?.count || 0;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${act.title}</strong></td>
-                    <td>${act.activity_date || '---'}</td>
-                    <td><span class="stats-badge">${regCount} طالب</span></td>
-                    <td class="actions-cell">
-                        <button class="btn-download" id="dl-${act.id}" onclick="generateReport('${act.id}', '${act.title}', '${act.activity_date}')">📥 كشف</button>
-                        <button class="btn-attendance" onclick="openAttendanceModal('${act.id}', '${act.title}', '${act.activity_date}', '${act.activity_time || ''}')">✅ غياب</button>
-                        <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️ حذف</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                if (actError) {
+                    console.error('خطأ في جلب الأنشطة:', actError);
+                    tbody.innerHTML = '<tr><td colspan="4">حدث خطأ في التحميل: ' + actError.message + '</td></tr>';
+                    return;
+                }
+
+                if (!activities || activities.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">لا توجد أنشطة حالياً</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+
+                activities.forEach(act => {
+                    const regCount = act.registrations ? act.registrations.length : 0;
+
+                    const tr = document.createElement('tr');
+                    const safeTitle = escapeHtml(act.title);
+                    const jsTitle = escapeQuotes(act.title);
+
+                    tr.innerHTML = `
+                        <td><strong>${safeTitle}</strong></td>
+                        <td>${act.activity_date || '---'}</td>
+                        <td><span class="stats-badge">${regCount} طالب</span></td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="btn-download" id="dl-${act.id}" onclick="generateReport('${act.id}', '${jsTitle}', '${act.activity_date}')">📥 كشف</button>
+                                <button class="btn-attendance" onclick="openAttendanceModal('${act.id}', '${jsTitle}', '${act.activity_date}', '${act.activity_time || ''}')">✅ غياب</button>
+                                <button class="btn-delete" onclick="deleteActivity('${act.id}')">🗑️ حذف</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                console.log('✅ تم تحميل ' + activities.length + ' نشاط بنجاح');
+
+            } catch (e) {
+                console.error('خطأ غير متوقع:', e);
+                tbody.innerHTML = '<tr><td colspan="4">حدث خطأ غير متوقع: ' + e.message + '</td></tr>';
+            }
         }
 
         async function generateReport(actId, title, date) {
@@ -515,6 +580,11 @@
                     .eq('activity_id', actId);
 
                 if (regsError) throw new Error(`خطأ في جلب المسجلين: ${regsError.message}`);
+
+                if (!regs || regs.length === 0) {
+                    alert('لا يوجد مسجلين في هذا النشاط');
+                    return;
+                }
 
                 const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                 const dayName = days[new Date(date).getDay()];
@@ -545,8 +615,11 @@
 
                 const printArea = document.getElementById('printArea');
                 printArea.style.display = 'block';
-                window.print();
-                printArea.style.display = 'none';
+
+                setTimeout(() => {
+                    window.print();
+                    printArea.style.display = 'none';
+                }, 100);
 
             } catch (e) {
                 console.error(e);
@@ -571,7 +644,12 @@
                 .eq('activity_id', actId);
 
             if (error) {
-                alert("خطأ في جلب البيانات");
+                alert("خطأ في جلب البيانات: " + error.message);
+                return;
+            }
+
+            if (!regs || regs.length === 0) {
+                alert('لا يوجد مسجلين في هذا النشاط');
                 return;
             }
 
@@ -582,8 +660,8 @@
                 const item = document.createElement('div');
                 item.className = 'attendance-item';
                 item.innerHTML = `
-                    <input type="checkbox" id="att-${reg.id}" data-name="${reg.profiles.full_name}" checked>
-                    <label for="att-${reg.id}">${reg.profiles.full_name}</label>
+                    <input type="checkbox" id="att-${reg.id}" data-name="${escapeHtml(reg.profiles.full_name)}" checked>
+                    <label for="att-${reg.id}">${escapeHtml(reg.profiles.full_name)}</label>
                 `;
                 listDiv.appendChild(item);
             });
@@ -659,9 +737,16 @@
         }
 
         async function deleteActivity(id) {
-            if (confirm("حذف النشاط نهائياً؟")) {
-                await _supabase.from('activities').delete().eq('id', id);
-                loadActivities();
+            if (confirm("هل أنت متأكد من حذف النشاط نهائياً؟ سيتم حذف جميع التسجيلات المرتبطة به.")) {
+                try {
+                    const { error } = await _supabase.from('activities').delete().eq('id', id);
+                    if (error) throw error;
+                    alert('تم حذف النشاط بنجاح');
+                    loadActivities();
+                } catch (error) {
+                    console.error('خطأ في الحذف:', error);
+                    alert('حدث خطأ أثناء الحذف: ' + error.message);
+                }
             }
         }
 
@@ -671,6 +756,13 @@
                 closeAttendanceModal();
             }
         }
+
+        // للتعامل مع Enter في حقل الباسورد
+        document.getElementById('passkeyInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPasskey();
+            }
+        });
     </script>
 </body>
 </html>
